@@ -1,0 +1,40 @@
+name: bmw_engine
+description: >
+  Representative BMW S58 inline-six engine assembly line (Munich/Hams Hall-style),
+  modeled from the publicly documented powertrain process — component kitting ->
+  short block (block, crank, pistons) -> long block (head, timing) -> dress
+  (turbo, intake) -> camera Q-gate -> hot test cell -> EOL ship. The Hot Test
+  Cell (S59, ~85s) is the line bottleneck, paced to the vehicle line takt (~90s
+  oven) so it keeps the X5 powertrain marriage supplied. Crank (S52) and Head (S54) take scripted
+  breakdowns. Simulation for demo — not BMW live data.
+line_id: BMW_ENGINE
+tick_hz: 1
+seed: 5858
+buffer_capacity: 3
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.08
+  current_running_a: 4.0
+  current_idle_a: 0.5
+  current_blocked_a: 0.8
+  current_down_a: 0.05
+  current_noise_a: 0.12
+
+stations:
+  # -- Component staging + short block -------------------------------------
+  - {id: S50, cycle_mean_s: 20}                                        # Component kitting
+  - {id: S51, cycle_mean_s: 30, current_running_a: 5.0}               # Engine block load
+  - {id: S52, cycle_mean_s: 40, current_running_a: 6.0, mtbf_s: 1800, mttr_mean_s: 80, mttr_std_s: 25}  # Crankshaft & mains: breakdowns
+  - {id: S53, cycle_mean_s: 45, current_running_a: 5.5}               # Pistons & con-rods
+  # -- Long block ----------------------------------------------------------
+  - {id: S54, cycle_mean_s: 42, current_running_a: 6.0, mtbf_s: 2200, mttr_mean_s: 70, mttr_std_s: 20}  # Cylinder head: breakdowns
+  - {id: S55, cycle_mean_s: 38, current_running_a: 5.0}               # Timing drive / VANOS
+  # -- Dress line ----------------------------------------------------------
+  - {id: S56, cycle_mean_s: 40, current_running_a: 5.0}               # Turbo & manifolds
+  - {id: S57, cycle_mean_s: 45}                                        # Intake & final dress
+  # -- Q-gate / hot test / ship --------------------------------------------
+  - {id: S58, cycle_mean_s: 25}                                        # Camera Q-gate
+  - {id: S59, cycle_mean_s: 85, current_running_a: 8.0}               # Hot test cell  <-- BOTTLENECK (paced to vehicle takt)
+  - {id: S60, cycle_mean_s: 30}                                        # EOL pass / ship

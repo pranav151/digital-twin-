@@ -1,0 +1,8 @@
+{
+  "stations": [
+    {"id": "S1", "cycle_mean_s": 18.0, "cycle_std_s": 1.5, "fail_rate_per_hr": 0.02},
+    {"id": "S2", "cycle_mean_s": 22.0, "cycle_std_s": 2.0, "fail_rate_per_hr": 0.03},
+    {"id": "S3", "cycle_mean_s": 55.2, "cycle_std_s": 4.0, "fail_rate_per_hr": 0.05},
+    {"id": "S4", "cycle_mean_s": 20.0, "cycle_std_s": 1.0, "fail_rate_per_hr": 0.01}
+  ]
+}

@@ -1,0 +1,5 @@
+# Phase 0-3 deps. Later phases add their own (twin: simpy, scipy, numpy, pandas).
+-r edge/emulator/requirements.txt
+-r services/ingestion/requirements.txt
+-r backend/requirements.txt
+amqtt>=0.11    # headless MQTT broker for local dev (Mosquitto stand-in)

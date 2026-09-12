@@ -1,0 +1,15 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+# digital twin (Phase 4/5)
+simpy>=4.1
+numpy>=1.26
+scipy>=1.11
+# real-hardware connectors (services/connectors) — DATA_SOURCE=opcua|mtconnect|modbus
+# httpx (below) drives the MTConnect connector; asyncua the OPC-UA one; pymodbus Modbus TCP.
+asyncua>=1.1
+pymodbus>=3.6
+# test/dev
+httpx>=0.27
+pytest>=8
+# optional: AI copilot (F1) — only needed if you set ANTHROPIC_API_KEY
+anthropic>=0.40

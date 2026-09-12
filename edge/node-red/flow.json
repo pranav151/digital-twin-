@@ -1,0 +1,67 @@
+[
+  {
+    "id": "ft_tab",
+    "type": "tab",
+    "label": "Factory Twin — Route A (PLC → MQTT)",
+    "disabled": false
+  },
+  {
+    "id": "ft_comment",
+    "type": "comment",
+    "z": "ft_tab",
+    "name": "Route A: OPC-UA/Modbus tags -> same MQTT telemetry schema",
+    "info": "Replace the inject node with an OPC-UA (node-red-contrib-opcua) or Modbus\n(node-red-contrib-modbus) read node that outputs the machine tags. Wire it into\nthe 'map tags' function, which formats the Telemetry schema and publishes to\nfactory/{line}/{station}/telemetry. Because a PLC exposes state directly, Route A\npublishes to /telemetry (not /raw) — no inference needed.",
+    "x": 320,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "ft_inject",
+    "type": "inject",
+    "z": "ft_tab",
+    "name": "poll 1 Hz (replace w/ OPC-UA/Modbus read)",
+    "props": [{ "p": "payload" }],
+    "repeat": "1",
+    "crontab": "",
+    "once": true,
+    "payloadType": "json",
+    "payload": "{\"running\":true,\"idle\":false,\"partCount\":1042,\"cycle_s\":86.2,\"amps\":4.7,\"partPresent\":true}",
+    "x": 200,
+    "y": 120,
+    "wires": [["ft_map"]]
+  },
+  {
+    "id": "ft_map",
+    "type": "function",
+    "z": "ft_tab",
+    "name": "map tags -> Telemetry schema",
+    "func": "// Map PLC tags (msg.payload) to the shared Telemetry schema (plan §6.1).\nconst LINE = 'L1', STATION = 'S1';\nconst t = msg.payload || {};\n\n// derive state from PLC booleans/tags\nlet state = 'idle';\nif (t.down) state = 'down';\nelse if (t.blocked) state = 'blocked';\nelse if (t.running) state = 'running';\nelse state = 'idle';\n\nmsg.topic = `factory/${LINE}/${STATION}/telemetry`;\nmsg.payload = {\n  ts: new Date().toISOString().replace(/\\.\\d+Z$/, 'Z'),\n  line_id: LINE,\n  station_id: STATION,\n  current_a: Number(t.amps ?? 0),\n  part_present: Boolean(t.partPresent ?? false),\n  part_count: Number(t.partCount ?? 0),\n  cycle_time_s: t.cycle_s != null ? Number(t.cycle_s) : null,\n  state: state\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 120,
+    "wires": [["ft_mqtt"]]
+  },
+  {
+    "id": "ft_mqtt",
+    "type": "mqtt out",
+    "z": "ft_tab",
+    "name": "MQTT publish",
+    "topic": "",
+    "qos": "0",
+    "retain": "false",
+    "broker": "ft_broker",
+    "x": 820,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "ft_broker",
+    "type": "mqtt-broker",
+    "name": "Mosquitto",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "node-red-routeA",
+    "keepalive": "60",
+    "cleansession": true
+  }
+]

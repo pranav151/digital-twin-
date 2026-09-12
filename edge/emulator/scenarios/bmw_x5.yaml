@@ -1,0 +1,44 @@
+name: bmw_x5
+description: >
+  Representative BMW X5 assembly plant (Spartanburg-style), modeled from the
+  publicly documented automotive process — Stamping -> Body-in-White -> Paint ->
+  Final Assembly -> Test/Ship. The Curing Oven (S41, ~90s) is the line bottleneck,
+  so the paint shop backs up and final assembly runs STARVED. Two body-shop weld
+  robots (S34, S35) take scripted breakdowns. Simulation for demo — not BMW live data.
+line_id: BMW_X5
+tick_hz: 1
+seed: 2026
+buffer_capacity: 3
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.08
+  current_running_a: 5.0
+  current_idle_a: 0.5
+  current_blocked_a: 0.9
+  current_down_a: 0.05
+  current_noise_a: 0.15
+
+stations:
+  # -- Stamping / Press shop ------------------------------------------------
+  - {id: S30, cycle_mean_s: 20}                                        # Coil / blanking
+  - {id: S31, cycle_mean_s: 30, current_running_a: 8.0}               # Stamping press A (heavy draw)
+  - {id: S32, cycle_mean_s: 30, current_running_a: 8.0}               # Stamping press B
+  # -- Body shop (Body-in-White) -------------------------------------------
+  - {id: S33, cycle_mean_s: 45, current_running_a: 6.0}               # Body framing (BIW)
+  - {id: S34, cycle_mean_s: 40, current_running_a: 7.0, mtbf_s: 1500, mttr_mean_s: 90, mttr_std_s: 25}  # Spot-weld 1: breakdowns
+  - {id: S35, cycle_mean_s: 42, current_running_a: 7.0, mtbf_s: 2000, mttr_mean_s: 80, mttr_std_s: 20}  # Spot-weld 2: breakdowns
+  - {id: S36, cycle_mean_s: 40, current_running_a: 7.0}               # Geometry / respot weld
+  - {id: S37, cycle_mean_s: 25}                                        # Body inspection
+  # -- Paint shop ----------------------------------------------------------
+  - {id: S38, cycle_mean_s: 50, current_running_a: 6.0}               # Pretreat / e-coat
+  - {id: S39, cycle_mean_s: 55, current_running_a: 6.0}               # Primer & base coat
+  - {id: S40, cycle_mean_s: 55, current_running_a: 6.0}               # Clear coat
+  - {id: S41, cycle_mean_s: 90, current_running_a: 9.0}               # Curing oven  <-- BOTTLENECK
+  # -- Final assembly ------------------------------------------------------
+  - {id: S42, cycle_mean_s: 60}                                        # Powertrain marriage
+  - {id: S43, cycle_mean_s: 55}                                        # Interior / trim & doors
+  - {id: S44, cycle_mean_s: 50}                                        # Wheels, glass, fluids
+  # -- Test / Ship ---------------------------------------------------------
+  - {id: S45, cycle_mean_s: 40}                                        # End-of-line test / ship

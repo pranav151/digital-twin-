@@ -1,0 +1,38 @@
+name: fullplant
+description: >
+  Full 14-station plant. S8 (Assembly Robot 2, ~50s) is the bottleneck — watch the
+  upstream machining/weld cells go BLOCKED and the downstream finishing/pack line go
+  STARVED. S6 (welder) and S9 (press) take unplanned breakdowns; S3 (Mill B) runs a
+  planned maintenance cycle. Serpentine flow S1->S7 (top bay), wrap, S8->S14 (bottom bay).
+line_id: L1
+tick_hz: 1
+seed: 42
+buffer_capacity: 3
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.08
+  current_running_a: 4.5
+  current_idle_a: 0.4
+  current_blocked_a: 0.8
+  current_down_a: 0.05
+  current_noise_a: 0.15
+
+stations:
+  # -- top bay --------------------------------------------------------------
+  - {id: S1,  cycle_mean_s: 15}
+  - {id: S2,  cycle_mean_s: 28, current_running_a: 6.0}                 # CNC Mill A (heavier draw)
+  - {id: S3,  cycle_mean_s: 30, current_running_a: 6.5, maint_every_s: 3600, maint_dur_s: 180}  # Mill B: planned maintenance
+  - {id: S4,  cycle_mean_s: 26, current_running_a: 5.5}                 # Lathe
+  - {id: S5,  cycle_mean_s: 18}                                        # Deburr & Wash
+  - {id: S6,  cycle_mean_s: 32, current_running_a: 7.0, mtbf_s: 1800, mttr_mean_s: 90, mttr_std_s: 25}  # Welder: breakdowns
+  - {id: S7,  cycle_mean_s: 34}                                        # Assembly Robot 1
+  # -- bottom bay -----------------------------------------------------------
+  - {id: S8,  cycle_mean_s: 50}                                        # Assembly Robot 2  <-- BOTTLENECK
+  - {id: S9,  cycle_mean_s: 24, current_running_a: 5.8, mtbf_s: 2400, mttr_mean_s: 75, mttr_std_s: 20}  # Press: breakdowns
+  - {id: S10, cycle_mean_s: 20}                                        # CMM Inspection
+  - {id: S11, cycle_mean_s: 30}                                        # Paint Booth
+  - {id: S12, cycle_mean_s: 30, current_running_a: 5.0}                # Curing Oven
+  - {id: S13, cycle_mean_s: 22}                                        # Case Packer
+  - {id: S14, cycle_mean_s: 20}                                        # Palletizer / Ship

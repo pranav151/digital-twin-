@@ -1,0 +1,26 @@
+name: breakdown
+description: Balanced line but stations randomly break down (MTBF/MTTR). Watch DWN events + downtime.
+line_id: L1
+tick_hz: 1
+seed: 7
+buffer_capacity: 3
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.08
+  current_running_a: 4.5
+  current_idle_a: 0.4
+  current_blocked_a: 0.8
+  current_down_a: 0.05
+  current_noise_a: 0.15
+  # reliability defaults applied to every station
+  mtbf_s: 600        # mean ~10 min of running between failures
+  mttr_mean_s: 90    # ~1.5 min average repair
+  mttr_std_s: 40
+
+stations:
+  - {id: S1, cycle_mean_s: 30}
+  - {id: S2, cycle_mean_s: 30, mtbf_s: 400}   # S2 is the flaky one (unplanned downs)
+  - {id: S3, cycle_mean_s: 30}
+  - {id: S4, cycle_mean_s: 30, maint_every_s: 900, maint_dur_s: 150}  # S4 planned maintenance

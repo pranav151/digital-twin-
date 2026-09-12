@@ -1,0 +1,33 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Env / secrets
+.env
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Infra runtime data
+infra/mosquitto/data/*
+infra/mosquitto/log/*
+!infra/mosquitto/data/.gitkeep
+!infra/mosquitto/log/.gitkeep
+
+# OS
+.DS_Store
+data/
+
+# Runtime logs / pids (services write these locally)
+logs/
+*.log
+*.pid
+
+# Local editor / tooling state
+.claude/
+.idea/
+.vscode/

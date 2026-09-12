@@ -1,0 +1,79 @@
+import { useState } from "react";
+import { postWhatIf, type WhatIfChange } from "../api";
+
+export function WhatIf({ stations }: { stations: string[] }) {
+  const [station, setStation] = useState(stations[0] || "S3");
+  const [kind, setKind] = useState<"cycle_reduction" | "add_operator">("cycle_reduction");
+  const [percent, setPercent] = useState(25);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const change: WhatIfChange = kind === "cycle_reduction"
+        ? { type: "cycle_reduction", station, percent }
+        : { type: "add_operator", station, operators: 1 };
+      setRes(await postWhatIf({ line: "L1", window: "1h", changes: [change], replications: 10 }));
+    } catch (e: any) { setErr(e.message || "failed"); }
+    finally { setBusy(false); }
+  };
+
+  const delta = res?.delta_pct ?? 0;
+  return (
+    <div className="grid cols" style={{ gap: 14 }}>
+      <div className="card">
+        <div className="h"><h3>What-if · test a change virtually</h3></div>
+        <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div><label>Station</label>
+            <select value={station} onChange={(e) => setStation(e.target.value)}>
+              {(stations.length ? stations : ["S1", "S2", "S3", "S4"]).map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div><label>Change</label>
+            <select value={kind} onChange={(e) => setKind(e.target.value as any)}>
+              <option value="cycle_reduction">Reduce cycle time %</option>
+              <option value="add_operator">Add an operator</option>
+            </select>
+          </div>
+          {kind === "cycle_reduction" && (
+            <div><label>Reduction %</label>
+              <input type="number" min={1} max={90} value={percent} onChange={(e) => setPercent(Number(e.target.value))} />
+            </div>
+          )}
+        </div>
+        <button className="primary" style={{ marginTop: 16 }} onClick={run} disabled={busy}>
+          {busy ? "Simulating…" : "Run what-if"}
+        </button>
+        {err && <div style={{ color: "var(--down)", marginTop: 10 }}>{err}</div>}
+        <p className="muted" style={{ marginTop: 16, fontSize: 12 }}>
+          Clones the calibrated twin, applies the change, runs 10 replications, and predicts
+          the new throughput — before you touch the real line.
+        </p>
+      </div>
+
+      <div className="card">
+        <div className="h"><h3>Predicted result</h3></div>
+        {!res && <div className="dim">run a scenario to see the prediction</div>}
+        {res && (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              <div className="val" style={{ fontSize: 40, fontWeight: 800 }}>{res.predicted.units_per_hr.toFixed(0)}<small style={{ fontSize: 15 }}> u/hr</small></div>
+              <div className={delta >= 0 ? "delta-pos" : "delta-neg"} style={{ fontSize: 22, fontWeight: 800 }}>
+                {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
+              </div>
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              baseline {res.baseline.units_per_hr.toFixed(0)} → predicted {res.predicted.units_per_hr.toFixed(0)} units/hr
+            </div>
+            <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <div>bottleneck before: <b style={{ color: "var(--idle)" }}>{res.baseline.bottleneck.bottleneck}</b> ({(res.baseline.bottleneck.utilization * 100).toFixed(0)}%)</div>
+              <div style={{ marginTop: 6 }}>bottleneck after: <b style={{ color: "var(--idle)" }}>{res.predicted.bottleneck.bottleneck}</b> ({(res.predicted.bottleneck.utilization * 100).toFixed(0)}%)</div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

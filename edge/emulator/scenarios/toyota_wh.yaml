@@ -1,0 +1,37 @@
+name: toyota_wh
+description: >
+  Representative Toyota genuine-parts DEPOT (order fulfilment, not production).
+  Two-level: small parts on the MEZZANINE (W1-W3), large parts on the GROUND
+  directly below (W4-W5); picked parts ride the goods lift (W6) + tuggers to
+  staging (W7-W9), are packed small+large into a box (W10), then scanned and
+  loaded at three truck docks (W11-W13). The Pack/Consolidate station (W10, ~55s)
+  is the bottleneck, so staging backs up. Simulation for demo — not live data.
+line_id: TOYOTA_WH
+tick_hz: 1
+seed: 8888
+buffer_capacity: 4
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.1
+  current_running_a: 2.0
+  current_idle_a: 0.4
+  current_blocked_a: 0.6
+  current_down_a: 0.05
+  current_noise_a: 0.1
+
+stations:
+  - {id: W1,  cycle_mean_s: 15}                                        # Pick-slip board / order release
+  - {id: W2,  cycle_mean_s: 35}                                        # Small parts pick A1 (mezzanine)
+  - {id: W3,  cycle_mean_s: 35}                                        # Small parts pick A2 (mezzanine)
+  - {id: W4,  cycle_mean_s: 45}                                        # Large parts pick G1 (ground)
+  - {id: W5,  cycle_mean_s: 45}                                        # Large parts pick G2 (ground)
+  - {id: W6,  cycle_mean_s: 40, current_running_a: 5.0, mtbf_s: 2400, mttr_mean_s: 60, mttr_std_s: 20}  # Goods lift: breakdowns
+  - {id: W7,  cycle_mean_s: 30}                                        # Staging conveyor 1
+  - {id: W8,  cycle_mean_s: 30}                                        # Staging conveyor 2
+  - {id: W9,  cycle_mean_s: 30}                                        # Staging conveyor 3
+  - {id: W10, cycle_mean_s: 55, current_running_a: 3.0}               # Pack & consolidate  <-- BOTTLENECK
+  - {id: W11, cycle_mean_s: 40}                                        # Truck dock 1 / final scan
+  - {id: W12, cycle_mean_s: 40}                                        # Truck dock 2 / final scan
+  - {id: W13, cycle_mean_s: 40}                                        # Truck dock 3 / final scan

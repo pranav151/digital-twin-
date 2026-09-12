@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Factory Twin — Live Overview (Target Mockup)</title>
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface-2:#1c232d; --border:#2a313c;
+    --ink:#e6edf3; --ink-muted:#9aa5b1; --ink-dim:#6b7482; --accent:#4a9eff;
+    --st-run:#3fb950; --st-idle:#d29922; --st-block:#db6d28; --st-down:#f85149;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:13px/1.5 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .demo-note{background:#1c232d;border-bottom:1px solid var(--border);color:var(--ink-dim);
+    font-size:11px;padding:5px 14px;text-align:center;letter-spacing:.3px}
+  .demo-note b{color:var(--ink-muted)}
+  .shell{display:grid;grid-template-columns:262px 1fr;grid-template-rows:54px 1fr;
+    grid-template-areas:"brand top" "rail main";height:calc(100vh - 27px)}
+
+  /* brand */
+  .brand{grid-area:brand;display:flex;align-items:center;gap:11px;padding:0 16px;
+    background:var(--surface);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#4a9eff,#2b6fd6);
+    display:grid;place-items:center;font-size:16px}
+  .brand b{font-size:14px;letter-spacing:.2px;display:block}
+  .brand small{color:var(--ink-dim);font-size:10.5px}
+
+  /* topbar */
+  .topbar{grid-area:top;display:flex;align-items:center;gap:10px;padding:0 16px;
+    background:var(--surface);border-bottom:1px solid var(--border)}
+  .sel{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:8px;color:var(--ink-muted);font-size:12px}
+  .sel b{color:var(--ink)}
+  .sel .car{color:var(--ink-dim);font-size:9px}
+  .spacer{flex:1}
+  .live{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:8px;color:var(--ink-muted);font-size:12px;font-weight:600}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--st-run);box-shadow:0 0 0 0 rgba(63,185,80,.5);animation:p 2s infinite}
+  @keyframes p{0%{box-shadow:0 0 0 0 rgba(63,185,80,.45)}70%{box-shadow:0 0 0 7px rgba(63,185,80,0)}100%{box-shadow:0 0 0 0 rgba(63,185,80,0)}}
+  .tabs{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .tabs button{background:transparent;border:0;color:var(--ink-muted);height:32px;padding:0 14px;font:600 12px/1 inherit;cursor:pointer}
+  .tabs button.on{background:#243041;color:var(--ink)}
+
+  /* rail */
+  .rail{grid-area:rail;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:10px}
+  .rail h4{color:var(--ink-dim);font-size:10px;letter-spacing:.9px;text-transform:uppercase;margin:8px 8px 10px;font-weight:700}
+  .mrow{display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:11px;padding:9px 10px;border-radius:10px;
+    border:1px solid transparent;cursor:pointer}
+  .mrow:hover{background:var(--surface-2)}
+  .mrow.sel{background:var(--surface-2);border-color:#33507e}
+  .mname{font-weight:650}
+  .mstate{font-size:11px;color:var(--ink-muted);display:flex;align-items:center;gap:6px;margin-top:1px}
+  .sdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .mo{font-size:13px;font-weight:700;text-align:right}
+  .mo small{display:block;color:var(--ink-dim);font-size:10px;font-weight:500}
+  /* conic donut */
+  .donut{width:38px;height:38px;border-radius:50%;position:relative;display:grid;place-items:center}
+  .donut::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--surface)}
+  .donut span{position:relative;z-index:1;font-size:10.5px;font-weight:750}
+
+  /* main */
+  .main{grid-area:main;overflow-y:auto;padding:16px}
+  .grid{display:grid;gap:14px}
+  .kpis{grid-template-columns:repeat(6,1fr)}
+  .cols{grid-template-columns:1.62fr 1fr;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px 15px;box-shadow:var(--shadow)}
+  .card>.h{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+  .card h3{margin:0;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-muted);font-weight:700}
+  .card .sub{color:var(--ink-dim);font-size:11px}
+
+  /* kpi tile */
+  .tile .lbl{color:var(--ink-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  .tile .val{font-size:30px;font-weight:750;letter-spacing:-.6px;line-height:1.15;margin-top:3px}
+  .tile .val small{font-size:13px;color:var(--ink-muted);font-weight:600}
+  .tile .foot{color:var(--ink-dim);font-size:10.5px;margin-top:3px;display:flex;align-items:center;gap:6px}
+  .badge{font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;border-radius:20px;
+    border:1px solid var(--border);color:var(--ink-dim)}
+  .spark{display:block;margin-top:8px}
+
+  /* floor */
+  .floor{width:100%;height:auto;display:block;background:#0c1220;border-radius:10px;border:1px solid #1e2636}
+
+  /* gantt */
+  .gwrap{display:flex;flex-direction:column;gap:9px}
+  .grow{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:10px}
+  .grow>span{font-weight:700;font-size:12px}
+  .gbar{display:flex;height:22px;border-radius:5px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2)}
+  .gbar i{display:block;height:100%;border-right:1px solid rgba(13,17,23,.5)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+  .legend span{display:inline-flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:11px}
+  .sw{width:10px;height:10px;border-radius:3px}
+
+  /* issues */
+  .issues{list-style:none;margin:0;padding:0}
+  .issues li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #20262f;font-size:12px}
+  .issues li:last-child{border-bottom:0}
+  .issues b{font-weight:700}
+  .issues .rsn{color:var(--ink-muted)}
+  .issues .tm{color:var(--ink-dim);margin-left:auto;font-size:11px}
+  .pin{width:9px;height:9px;border-radius:50%;flex:none}
+  .ok{color:var(--st-run)}
+</style>
+</head>
+<body>
+<div class="demo-note"><b>TARGET MOCKUP</b> — static, illustrative data. This is the look &amp; layout to build to (spec: docs/Frontend_Design_Spec.md). Not the live app.</div>
+
+<div class="shell">
+  <!-- brand -->
+  <div class="brand">
+    <div class="logo">⚙️</div>
+    <div><b>Factory Twin</b><small>Live digital twin · Line L1</small></div>
+  </div>
+
+  <!-- topbar -->
+  <div class="topbar">
+    <span class="sel"><b>Line L1</b><span class="car">▾</span></span>
+    <span class="sel">Window <b>1h</b><span class="car">▾</span></span>
+    <span class="spacer"></span>
+    <span class="live"><span class="pulse"></span>Live</span>
+    <span class="tabs">
+      <button class="on">Overview</button><button>Station</button><button>What-If</button><button>Validation</button>
+    </span>
+  </div>
+
+  <!-- rail -->
+  <aside class="rail">
+    <h4>Line L1 · 4 stations</h4>
+
+    <div class="mrow">
+      <div class="donut" style="background:conic-gradient(var(--st-run) 82%,var(--surface-2) 0)"><span>82</span></div>
+      <div><div class="mname">S1</div><div class="mstate"><span class="sdot" style="background:var(--st-run)"></span>Running</div></div>
+      <div class="mo">1,042<small>parts</small></div>
+    </div>
+
+    <div class="mrow">
+      <div class="donut" style="background:conic-gradient(var(--st-block) 74%,var(--surface-2) 0)"><span>74</span></div>
+      <div><div class="mname">S2</div><div class="mstate"><span class="sdot" style="background:var(--st-block)"></span>Blocked</div></div>
+      <div class="mo">1,038<small>parts</small></div>
+    </div>
+
+    <div class="mrow sel">
+      <div class="donut" style="background:conic-gradient(var(--st-down) 58%,var(--surface-2) 0)"><span>58</span></div>
+      <div><div class="mname">S3</div><div class="mstate"><span class="sdot" style="background:var(--st-down)"></span>Down · jam</div></div>
+      <div class="mo">1,011<small>parts</small></div>
+    </div>
+
+    <div class="mrow">
+      <div class="donut" style="background:conic-gradient(var(--st-idle) 69%,var(--surface-2) 0)"><span>69</span></div>
+      <div><div class="mname">S4</div><div class="mstate"><span class="sdot" style="background:var(--st-idle)"></span>Idle · starved</div></div>
+      <div class="mo">1,003<small>parts</small></div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main class="main">
+    <div class="grid" style="gap:14px">
+
+      <!-- KPI strip: 6 tiles, each with context -->
+      <div class="grid kpis">
+        <div class="card tile">
+          <div class="lbl">OEE · S3</div>
+          <div class="val" style="color:var(--st-down)">58<small>%</small></div>
+          <div class="foot">target 85% · <span style="color:var(--st-down)">▼ below band</span></div>
+          <svg class="spark" width="100%" height="20" viewBox="0 0 120 20" preserveAspectRatio="none">
+            <polyline points="0,7 14,6 28,8 42,6 56,7 70,9 84,8 98,12 112,15 120,16" fill="none" stroke="#f85149" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="card tile">
+          <div class="lbl">Availability</div>
+          <div class="val">71<small>%</small></div>
+          <div class="foot">run ÷ planned time</div>
+        </div>
+        <div class="card tile">
+          <div class="lbl">Performance</div>
+          <div class="val">82<small>%</small></div>
+          <div class="foot">speed vs ideal cycle</div>
+        </div>
+        <div class="card tile">
+          <div class="lbl">Quality</div>
+          <div class="val">99<small>%</small></div>
+          <div class="foot"><span class="badge">assumed</span> no reject sensor</div>
+        </div>
+        <div class="card tile">
+          <div class="lbl">Throughput</div>
+          <div class="val">38<small> u/hr</small></div>
+          <div class="foot">terminal S4</div>
+          <svg class="spark" width="100%" height="20" viewBox="0 0 120 20" preserveAspectRatio="none">
+            <polyline points="0,7 14,6 28,8 42,7 56,6 70,7 84,8 98,11 112,15 120,17" fill="none" stroke="#4a9eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="card tile">
+          <div class="lbl">Bottleneck</div>
+          <div class="val" style="color:var(--st-idle)">S3</div>
+          <div class="foot">96% impact · down</div>
+        </div>
+      </div>
+
+      <!-- Floor map -->
+      <div class="card">
+        <div class="h"><h3>Live floor — 4 stations</h3><span class="sub">selected S3 · click a station to inspect</span></div>
+        <svg class="floor" viewBox="0 0 900 250" role="img" aria-label="factory floor">
+          <defs>
+            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+              <path d="M30 0H0V30" fill="none" stroke="#141c2b" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect x="14" y="14" width="872" height="222" rx="12" fill="url(#grid)" stroke="#1e2636"/>
+
+          <!-- conveyor -->
+          <line x1="70" y1="150" x2="830" y2="150" stroke="#2a3446" stroke-width="6"/>
+          <text x="30" y="140" fill="#5c6b82" font-size="11">material in →</text>
+          <text x="870" y="140" fill="#5c6b82" font-size="11" text-anchor="end">→ finished out</text>
+
+          <!-- buffers -->
+          <g fill="#182136" stroke="#2a3446">
+            <rect x="247" y="141" width="18" height="18" rx="3"/>
+            <rect x="457" y="141" width="18" height="18" rx="3"/>
+            <rect x="667" y="141" width="18" height="18" rx="3"/>
+          </g>
+          <g fill="#4a566f" font-size="9" text-anchor="middle">
+            <text x="256" y="176">buffer</text><text x="466" y="176">buffer</text><text x="676" y="176">buffer</text>
+          </g>
+
+          <!-- S1 running -->
+          <g>
+            <rect x="90" y="96" width="120" height="86" rx="10" fill="#131c2e" stroke="#3fb950" stroke-width="2"/>
+            <rect x="90" y="96" width="120" height="24" rx="10" fill="#3fb950"/>
+            <rect x="90" y="108" width="120" height="12" fill="#3fb950"/>
+            <text x="102" y="113" fill="#08130b" font-size="12" font-weight="800">S1</text>
+            <text x="198" y="113" fill="#08130b" font-size="10.5" font-weight="800" text-anchor="end">RUNNING</text>
+            <text x="102" y="146" fill="#e6edf3" font-size="12">parts</text>
+            <text x="198" y="146" fill="#e6edf3" font-size="17" font-weight="750" text-anchor="end">1042</text>
+            <text x="102" y="170" fill="#9aa5b1" font-size="11">4.7 A</text>
+            <text x="198" y="170" fill="#9aa5b1" font-size="11" text-anchor="end">86s cyc</text>
+          </g>
+          <!-- S2 blocked -->
+          <g>
+            <rect x="300" y="96" width="120" height="86" rx="10" fill="#131c2e" stroke="#db6d28" stroke-width="2"/>
+            <rect x="300" y="96" width="120" height="24" rx="10" fill="#db6d28"/>
+            <rect x="300" y="108" width="120" height="12" fill="#db6d28"/>
+            <text x="312" y="113" fill="#1b0f05" font-size="12" font-weight="800">S2</text>
+            <text x="408" y="113" fill="#1b0f05" font-size="10.5" font-weight="800" text-anchor="end">BLOCKED</text>
+            <text x="312" y="146" fill="#e6edf3" font-size="12">parts</text>
+            <text x="408" y="146" fill="#e6edf3" font-size="17" font-weight="750" text-anchor="end">1038</text>
+            <text x="312" y="170" fill="#9aa5b1" font-size="11">5.1 A</text>
+            <text x="408" y="170" fill="#9aa5b1" font-size="11" text-anchor="end">buffer full</text>
+          </g>
+          <!-- S3 down + bottleneck + selected -->
+          <g>
+            <rect x="504" y="90" width="132" height="98" rx="12" fill="none" stroke="#4a9eff" stroke-width="3" opacity=".9"/>
+            <text x="570" y="80" fill="#d29922" font-size="11" font-weight="800" text-anchor="middle">▲ BOTTLENECK</text>
+            <rect x="510" y="96" width="120" height="86" rx="10" fill="#1a1113" stroke="#f85149" stroke-width="2"/>
+            <rect x="510" y="96" width="120" height="24" rx="10" fill="#f85149"/>
+            <rect x="510" y="108" width="120" height="12" fill="#f85149"/>
+            <text x="522" y="113" fill="#1b0606" font-size="12" font-weight="800">S3</text>
+            <text x="618" y="113" fill="#1b0606" font-size="10.5" font-weight="800" text-anchor="end">DOWN</text>
+            <text x="522" y="146" fill="#e6edf3" font-size="12">parts</text>
+            <text x="618" y="146" fill="#e6edf3" font-size="17" font-weight="750" text-anchor="end">1011</text>
+            <text x="522" y="170" fill="#f85149" font-size="11">jam · 2m</text>
+            <text x="618" y="170" fill="#9aa5b1" font-size="11" text-anchor="end">0.2 A</text>
+          </g>
+          <!-- S4 idle -->
+          <g>
+            <rect x="720" y="96" width="120" height="86" rx="10" fill="#131c2e" stroke="#d29922" stroke-width="2"/>
+            <rect x="720" y="96" width="120" height="24" rx="10" fill="#d29922"/>
+            <rect x="720" y="108" width="120" height="12" fill="#d29922"/>
+            <text x="732" y="113" fill="#1a1305" font-size="12" font-weight="800">S4</text>
+            <text x="828" y="113" fill="#1a1305" font-size="10.5" font-weight="800" text-anchor="end">IDLE</text>
+            <text x="732" y="146" fill="#e6edf3" font-size="12">parts</text>
+            <text x="828" y="146" fill="#e6edf3" font-size="17" font-weight="750" text-anchor="end">1003</text>
+            <text x="732" y="170" fill="#9aa5b1" font-size="11">starved</text>
+            <text x="828" y="170" fill="#9aa5b1" font-size="11" text-anchor="end">1.1 A</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- timeline + right stack -->
+      <div class="grid cols">
+        <!-- state timeline -->
+        <div class="card">
+          <div class="h"><h3>Machine-state timeline</h3><span class="sub">last 1h</span></div>
+          <div class="gwrap">
+            <div class="grow"><span>S1</span><div class="gbar">
+              <i style="width:88%;background:var(--st-run)"></i><i style="width:6%;background:var(--st-idle)"></i><i style="width:6%;background:var(--st-run)"></i>
+            </div></div>
+            <div class="grow"><span>S2</span><div class="gbar">
+              <i style="width:70%;background:var(--st-run)"></i><i style="width:12%;background:var(--st-idle)"></i><i style="width:18%;background:var(--st-block)"></i>
+            </div></div>
+            <div class="grow"><span>S3</span><div class="gbar">
+              <i style="width:62%;background:var(--st-run)"></i><i style="width:9%;background:var(--st-idle)"></i><i style="width:7%;background:var(--st-block)"></i><i style="width:22%;background:var(--st-down)"></i>
+            </div></div>
+            <div class="grow"><span>S4</span><div class="gbar">
+              <i style="width:74%;background:var(--st-run)"></i><i style="width:26%;background:var(--st-idle)"></i>
+            </div></div>
+          </div>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--st-run)"></i>Running</span>
+            <span><i class="sw" style="background:var(--st-idle)"></i>Idle / starved</span>
+            <span><i class="sw" style="background:var(--st-block)"></i>Blocked</span>
+            <span><i class="sw" style="background:var(--st-down)"></i>Down</span>
+          </div>
+        </div>
+
+        <!-- right stack: throughput + stops -->
+        <div class="grid" style="gap:14px">
+          <div class="card">
+            <div class="h"><h3>Throughput</h3><span class="sub">units / hr · live</span></div>
+            <svg width="100%" height="130" viewBox="0 0 320 130" preserveAspectRatio="none" aria-label="throughput trend">
+              <defs>
+                <linearGradient id="tp" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#4a9eff" stop-opacity=".38"/>
+                  <stop offset="100%" stop-color="#4a9eff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="108" x2="320" y2="108" stroke="#212a37" stroke-width="1"/>
+              <line x1="0" y1="66" x2="320" y2="66" stroke="#212a37" stroke-width="1" stroke-dasharray="3 4"/>
+              <path d="M8,44 L26,40 L44,46 L62,42 L80,38 L98,44 L116,40 L134,42 L152,38 L170,44 L188,40 L206,46 L224,42 L242,45 L260,52 L278,66 L296,86 L314,96 L314,112 L8,112 Z" fill="url(#tp)"/>
+              <path d="M8,44 L26,40 L44,46 L62,42 L80,38 L98,44 L116,40 L134,42 L152,38 L170,44 L188,40 L206,46 L224,42 L242,45 L260,52 L278,66 L296,86 L314,96" fill="none" stroke="#4a9eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="314" cy="96" r="3.5" fill="#4a9eff"/>
+            </svg>
+            <div class="foot" style="color:var(--ink-dim);font-size:11px;margin-top:2px">dropped ~18% since S3 went down</div>
+          </div>
+
+          <div class="card">
+            <div class="h"><h3>Recent stops</h3><span class="sub">by exception</span></div>
+            <ul class="issues">
+              <li><span class="pin" style="background:var(--st-down)"></span><b>S3</b><span class="rsn">Down · jam</span><span class="tm">2m ago</span></li>
+              <li><span class="pin" style="background:var(--st-block)"></span><b>S2</b><span class="rsn">Blocked · buffer full</span><span class="tm">3m ago</span></li>
+              <li><span class="pin" style="background:var(--st-idle)"></span><b>S4</b><span class="rsn">Idle · starved</span><span class="tm">3m ago</span></li>
+              <li><span class="pin" style="background:var(--st-down)"></span><b>S3</b><span class="rsn">Down · sensor fault</span><span class="tm">41m ago</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

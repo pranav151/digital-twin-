@@ -1,0 +1,29 @@
+name: line2
+description: >
+  Line L2 — an 8-station precision-component line run in parallel with L1 as a
+  second assembly line in the plant. S21 (welding robot, ~40s) is the bottleneck;
+  S19 (mill) takes occasional breakdowns. Straight flow S18 -> S25.
+line_id: L2
+tick_hz: 1
+seed: 77
+buffer_capacity: 3
+source_infinite: true
+sink_infinite: true
+
+defaults:
+  cycle_std_frac: 0.08
+  current_running_a: 4.5
+  current_idle_a: 0.4
+  current_blocked_a: 0.8
+  current_down_a: 0.05
+  current_noise_a: 0.15
+
+stations:
+  - {id: S18, cycle_mean_s: 14}                                        # Raw intake
+  - {id: S19, cycle_mean_s: 26, current_running_a: 6.0, mtbf_s: 2600, mttr_mean_s: 70, mttr_std_s: 20}  # CNC mill: breakdowns
+  - {id: S20, cycle_mean_s: 24, current_running_a: 5.5}                # Lathe
+  - {id: S21, cycle_mean_s: 40, current_running_a: 7.0}                # Welding robot  <-- BOTTLENECK
+  - {id: S22, cycle_mean_s: 30}                                        # Assembly robot
+  - {id: S23, cycle_mean_s: 22, current_running_a: 5.8}                # Servo press
+  - {id: S24, cycle_mean_s: 28, current_running_a: 5.0}               # Paint booth
+  - {id: S25, cycle_mean_s: 20}                                        # Case packer

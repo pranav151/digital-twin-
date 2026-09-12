@@ -1,0 +1,157 @@
+# Asset registry + factory LAYOUT (build plan backlog D2 + spec §10).
+# Static per-station facts AND the spatial layout (x/z floor coords in metres,
+# zones, flow edges) so the 2D map and the 3D scene are generated from config —
+# not hardcoded — and a layout editor can move things later. Surfaced via
+# /api/assets and joined to live data in the UI.
+#
+# L1 is a full 14-station discrete-manufacturing plant laid out as a serpentine
+# (two bays): S1..S7 flow left->right along the top bay, wrap at S7->S8, then
+# S8..S14 flow right->left along the bottom bay. The emulator scenario
+# `fullplant` drives all 14 stations live (breakdowns + planned maintenance).
+lines:
+  L1:
+    name: "Line L1 · Plant 1 — machined & assembled product"
+    # directed material-flow edges between stations (source -> sink order)
+    flow: [[S1, S2], [S2, S3], [S3, S4], [S4, S5], [S5, S6], [S6, S7], [S7, S8],
+           [S8, S9], [S9, S10], [S10, S11], [S11, S12], [S12, S13], [S13, S14]]
+    # process zones (floor areas): x,z = near corner (metres), w,d = size
+    zones:
+      - {id: raw,        label: "RAW MATERIAL",       x: -19, z: -8,  w: 7,  d: 6}
+      - {id: machining,  label: "CNC MACHINING",      x: -12, z: -8,  w: 20, d: 6}
+      - {id: weld,       label: "WELD & ASSEMBLY",    x:   8, z: -8,  w: 12, d: 6}
+      - {id: finishing,  label: "FINISHING · PAINT",  x:   3, z:  2,  w: 17, d: 6}
+      - {id: shipping,   label: "INSPECT · PACK · SHIP", x: -19, z: 2, w: 22, d: 6}
+      # A dedicated cell for the two REAL machines fed live from demo.mtconnect.org
+      # (Okuma + Mazak). Not part of the serial line — independent monitored assets.
+      - {id: realcell,   label: "REAL CNC CELL · LIVE MTCONNECT", x: -8, z: 9.5, w: 16, d: 5}
+    stations:
+      # Several stations load real GLTF/GLB models (the `model:` field) instead of
+      # procedural geometry: robots/machines from Kenney's CC0 Factory Kit, plus two
+      # Draco-compressed CAD demo models. Any load failure falls back to procedural.
+      # -- top bay: S1..S7 (z = -4), flow left -> right --------------------------
+      - {id: S1,  name: "Raw Intake / Destacker", type: "Load station",        ideal_cycle_s: 15, x: -16, z: -4, next_maintenance_due: "2026-01-05", service_provider: "In-house maintenance"}
+      - {id: S2,  name: "CNC Mill A",             type: "3-axis mill",         ideal_cycle_s: 28, x: -11, z: -4, next_maintenance_due: "2025-11-15", service_provider: "Doosan service team", model: "/models/cnc.glb"}
+      - {id: S3,  name: "CNC Mill B",             type: "5-axis mill",         ideal_cycle_s: 30, x:  -6, z: -4, next_maintenance_due: "2025-11-22", service_provider: "Doosan service team", model: "/models/cnc.glb"}
+      - {id: S4,  name: "CNC Lathe",              type: "turning lathe",       ideal_cycle_s: 26, x:  -1, z: -4, next_maintenance_due: "2025-12-08", service_provider: "Mazak service", model: "/models/lathe.glb"}
+      - {id: S5,  name: "Deburr & Wash",          type: "wash station",        ideal_cycle_s: 18, x:   4, z: -4, next_maintenance_due: "2026-02-01", service_provider: "In-house maintenance"}
+      - {id: S6,  name: "Welding Robot",          type: "welding robot cell",  ideal_cycle_s: 32, x:   9, z: -4, next_maintenance_due: "2025-10-20", service_provider: "FANUC field service"}
+      - {id: S7,  name: "Assembly Robot 1",       type: "6-axis robot cell",   ideal_cycle_s: 34, x:  14, z: -4, next_maintenance_due: "2025-11-30", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      # -- bottom bay: S8..S14 (z = +4), flow right -> left ----------------------
+      - {id: S8,  name: "Assembly Robot 2",       type: "6-axis robot cell",   ideal_cycle_s: 50, x:  14, z:  4, next_maintenance_due: "2025-10-18", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      - {id: S9,  name: "Servo Press",            type: "stamping press",      ideal_cycle_s: 24, x:   9, z:  4, next_maintenance_due: "2025-12-15", service_provider: "Schuler service"}
+      - {id: S10, name: "CMM Inspection",         type: "inspection scanner",  ideal_cycle_s: 20, x:   4, z:  4, next_maintenance_due: "2026-01-20", service_provider: "Zeiss calibration"}
+      - {id: S11, name: "Paint Booth",            type: "paint booth",         ideal_cycle_s: 30, x:  -1, z:  4, next_maintenance_due: "2025-11-10", service_provider: "External contractor"}
+      - {id: S12, name: "Curing Oven",            type: "curing oven",         ideal_cycle_s: 30, x:  -6, z:  4, next_maintenance_due: "2026-02-14", service_provider: "In-house maintenance"}
+      - {id: S13, name: "Case Packer",            type: "case packer",         ideal_cycle_s: 22, x: -11, z:  4, next_maintenance_due: "2026-01-10", service_provider: "External contractor"}
+      - {id: S14, name: "Palletizer / Ship",      type: "palletizing robot",   ideal_cycle_s: 20, x: -16, z:  4, next_maintenance_due: "2025-12-01", service_provider: "In-house maintenance"}
+      # -- REAL machines: live MTConnect feeds from public manufacturing agents (no flow edges) ---
+      - {id: S15, name: "Okuma MULT (real)",       type: "turning lathe",       ideal_cycle_s: null, x: -5, z: 11.5, next_maintenance_due: null, service_provider: "MTConnect · demo.mtconnect.org", model: "/models/lathe.glb"}
+      - {id: S16, name: "Mazak Variaxis (real)",   type: "5-axis mill",         ideal_cycle_s: null, x:  0, z: 11.5, next_maintenance_due: null, service_provider: "MTConnect · demo.mtconnect.org", model: "/models/cnc.glb"}
+      - {id: S17, name: "Mazak MC2 (real·iSmart)", type: "5-axis mill",         ideal_cycle_s: null, x:  5, z: 11.5, next_maintenance_due: null, service_provider: "MTConnect · mtconnect.mazakcorp.com (real factory)", model: "/models/cnc.glb"}
+
+  # A SECOND assembly line, run in parallel by its own emulator (scenario `line2`)
+  # in a bay behind L1 (z = -16). S21 (welding robot) is its bottleneck. Rendered
+  # together with L1 in the whole-plant 3D view (/api/assets?line=ALL).
+  L2:
+    name: "Line L2 · Plant 1 — precision component line"
+    flow: [[S18, S19], [S19, S20], [S20, S21], [S21, S22], [S22, S23], [S23, S24], [S24, S25]]
+    zones:
+      - {id: l2mach, label: "L2 · RAW & MACHINING",  x: -19, z: -19, w: 16, d: 6}
+      - {id: l2asm,  label: "L2 · WELD & ASSEMBLY",  x:  -3, z: -19, w: 10, d: 6}
+      - {id: l2fin,  label: "L2 · FINISH & PACK",    x:   7, z: -19, w: 10, d: 6}
+    stations:
+      - {id: S18, name: "L2 Raw Intake",     type: "Load station",       ideal_cycle_s: 14, x: -16, z: -16, next_maintenance_due: "2026-01-12", service_provider: "In-house maintenance"}
+      - {id: S19, name: "L2 CNC Mill",       type: "3-axis mill",        ideal_cycle_s: 26, x: -12, z: -16, next_maintenance_due: "2025-11-18", service_provider: "Haas service", model: "/models/cnc.glb"}
+      - {id: S20, name: "L2 CNC Lathe",      type: "turning lathe",      ideal_cycle_s: 24, x:  -8, z: -16, next_maintenance_due: "2025-12-05", service_provider: "Mazak service", model: "/models/lathe.glb"}
+      - {id: S21, name: "L2 Welding Robot",  type: "welding robot cell", ideal_cycle_s: 40, x:  -4, z: -16, next_maintenance_due: "2025-10-25", service_provider: "FANUC field service"}
+      - {id: S22, name: "L2 Assembly Robot", type: "6-axis robot cell",  ideal_cycle_s: 30, x:   0, z: -16, next_maintenance_due: "2025-11-28", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      - {id: S23, name: "L2 Servo Press",    type: "stamping press",     ideal_cycle_s: 22, x:   4, z: -16, next_maintenance_due: "2025-12-18", service_provider: "Schuler service"}
+      - {id: S24, name: "L2 Paint Booth",    type: "paint booth",        ideal_cycle_s: 28, x:   8, z: -16, next_maintenance_due: "2025-11-12", service_provider: "External contractor"}
+      - {id: S25, name: "L2 Case Packer",    type: "case packer",        ideal_cycle_s: 20, x:  12, z: -16, next_maintenance_due: "2026-01-14", service_provider: "External contractor"}
+
+  # ---------------------------------------------------------------------------
+  # BMW X5 assembly plant — a REPRESENTATIVE digital twin of the automotive build
+  # process (Spartanburg-style), modeled from BMW's PUBLICLY documented process:
+  # Stamping -> Body Shop (Body-in-White) -> Paint -> Final Assembly -> Test/Ship.
+  # This is a simulation for demonstration, NOT BMW's proprietary live data. The
+  # curing oven (S41) is the designed bottleneck; the body-shop weld robots take
+  # scripted breakdowns. `product: car` makes the moving unit a car body that
+  # transforms shop by shop (blank -> stamped -> body-in-white -> painted -> car).
+  # ---------------------------------------------------------------------------
+  BMW_X5:
+    name: "BMW X5 · Plant Spartanburg (representative twin)"
+    product: car
+    flow: [[S30,S31],[S31,S32],[S32,S33],[S33,S34],[S34,S35],[S35,S36],[S36,S37],
+           [S37,S38],[S38,S39],[S39,S40],[S40,S41],[S41,S42],[S42,S43],[S43,S44],[S44,S45]]
+    zones:
+      - {id: bmw_stamp,  label: "STAMPING · PRESS SHOP",     x: -10, z: -30.5, w: 20, d: 5}
+      - {id: bmw_body,   label: "BODY SHOP · BODY-IN-WHITE", x: -10, z: -35.5, w: 20, d: 5}
+      - {id: bmw_paint,  label: "PAINT SHOP",                x: -10, z: -40.5, w: 20, d: 5}
+      - {id: bmw_final,  label: "FINAL ASSEMBLY · TEST",     x: -10, z: -45.5, w: 20, d: 5}
+    stations:
+      # -- top bay: Stamping + Body shop (z = -30), flow left -> right ----------
+      - {id: S30, name: "Steel Coil / Blanking",   type: "Load station",        ideal_cycle_s: 20, x: -7.5, z: -28, next_maintenance_due: "2026-02-01", service_provider: "Schuler / in-house"}
+      - {id: S31, name: "Stamping Press A",         type: "stamping press",      ideal_cycle_s: 30, x: -2.5, z: -28, next_maintenance_due: "2026-01-20", service_provider: "Schuler service"}
+      - {id: S32, name: "Stamping Press B",         type: "stamping press",      ideal_cycle_s: 30, x: 2.5, z: -28, next_maintenance_due: "2026-01-25", service_provider: "Schuler service"}
+      - {id: S33, name: "Body Framing (BIW)",       type: "6-axis robot cell",   ideal_cycle_s: 45, x: 7.5, z: -28, next_maintenance_due: "2026-01-15", service_provider: "KUKA field service", model: "/models/robot.glb"}
+      - {id: S34, name: "Spot-Weld Robot 1",        type: "welding robot cell",  ideal_cycle_s: 40, x: 7.5, z: -33, next_maintenance_due: "2025-11-30", service_provider: "KUKA field service"}
+      - {id: S35, name: "Spot-Weld Robot 2",        type: "welding robot cell",  ideal_cycle_s: 42, x: 2.5, z: -33, next_maintenance_due: "2025-12-05", service_provider: "KUKA field service"}
+      - {id: S36, name: "Geometry / Respot Weld",   type: "welding robot cell",  ideal_cycle_s: 40, x: -2.5, z: -33, next_maintenance_due: "2025-12-12", service_provider: "KUKA field service"}
+      - {id: S37, name: "Body Inspection",          type: "inspection scanner",  ideal_cycle_s: 25, x: -7.5, z: -33, next_maintenance_due: "2026-02-10", service_provider: "Zeiss calibration"}
+      # -- bottom bay: Paint + Final assembly + Test (z = -38), flow right -> left
+      - {id: S38, name: "Pretreatment / E-Coat",    type: "paint booth",         ideal_cycle_s: 50, x: -7.5, z: -38, next_maintenance_due: "2025-11-18", service_provider: "Dürr systems"}
+      - {id: S39, name: "Primer & Base Coat",       type: "paint booth",         ideal_cycle_s: 55, x: -2.5, z: -38, next_maintenance_due: "2025-11-22", service_provider: "Dürr systems"}
+      - {id: S40, name: "Clear Coat",               type: "paint booth",         ideal_cycle_s: 55, x: 2.5, z: -38, next_maintenance_due: "2025-11-28", service_provider: "Dürr systems"}
+      - {id: S41, name: "Curing Oven",              type: "curing oven",         ideal_cycle_s: 90, x: 7.5, z: -38, next_maintenance_due: "2026-02-14", service_provider: "Eisenmann"}
+      - {id: S42, name: "Powertrain Marriage",      type: "6-axis robot cell",   ideal_cycle_s: 60, x: 7.5, z: -43, next_maintenance_due: "2025-12-01", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      - {id: S43, name: "Interior / Trim & Doors",  type: "6-axis robot cell",   ideal_cycle_s: 55, x: 2.5, z: -43, next_maintenance_due: "2025-12-08", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      - {id: S44, name: "Wheels · Glass · Fluids",  type: "6-axis robot cell",   ideal_cycle_s: 50, x: -2.5, z: -43, next_maintenance_due: "2025-12-15", service_provider: "In-house maintenance", model: "/models/robot.glb"}
+      - {id: S45, name: "End-of-Line Test / Ship",  type: "inspection scanner",  ideal_cycle_s: 40, x: -7.5, z: -43, next_maintenance_due: "2026-01-30", service_provider: "In-house maintenance"}
+
+  BMW_ENGINE:
+    name: "BMW S58 Engine Line · Plant Munich (representative twin)"
+    product: engine
+    flow: [[S50,S51],[S51,S52],[S52,S53],[S53,S54],[S54,S55],[S55,S56],
+           [S56,S57],[S57,S58],[S58,S59],[S59,S60]]
+    zones:
+      - {id: eng_build,  label: "COMPONENT STAGING · ENGINE BUILD", x: -15.5, z: -54.5, w: 31, d: 5}
+      - {id: eng_finish, label: "DRESS · Q-GATE · HOT TEST",        x: -10.5, z: -60.5, w: 26, d: 5}
+    stations:
+      # -- build bay (z = -52), flow left -> right: short block -> long block ----
+      - {id: S50, name: "Component Kitting",        type: "kitting station",     ideal_cycle_s: 20, x: -12.5, z: -52, next_maintenance_due: "2026-02-05", service_provider: "In-house logistics"}
+      - {id: S51, name: "Engine Block Load",        type: "block station",       ideal_cycle_s: 30, x: -7.5, z: -52, next_maintenance_due: "2026-01-18", service_provider: "GROB Systems"}
+      - {id: S52, name: "Crankshaft & Mains",       type: "crank station",       ideal_cycle_s: 40, x: -2.5, z: -52, next_maintenance_due: "2025-12-02", service_provider: "GROB Systems"}
+      - {id: S53, name: "Pistons & Con-Rods",       type: "piston station",      ideal_cycle_s: 45, x: 2.5, z: -52, next_maintenance_due: "2025-12-09", service_provider: "Atlas Copco / GROB"}
+      - {id: S54, name: "Cylinder Head Assembly",   type: "head station",        ideal_cycle_s: 42, x: 7.5, z: -52, next_maintenance_due: "2025-12-14", service_provider: "GROB Systems"}
+      - {id: S55, name: "Timing Drive · VANOS",     type: "timing station",      ideal_cycle_s: 38, x: 12.5, z: -52, next_maintenance_due: "2026-01-08", service_provider: "Atlas Copco"}
+      # -- finish bay (z = -58), flow right -> left: dress -> Q-gate -> hot test -
+      - {id: S56, name: "Turbo & Manifolds",        type: "turbo station",       ideal_cycle_s: 40, x: 12.5, z: -58, next_maintenance_due: "2025-12-20", service_provider: "Atlas Copco"}
+      - {id: S57, name: "Intake & Final Dress",     type: "dress station",       ideal_cycle_s: 45, x: 7.5, z: -58, next_maintenance_due: "2026-01-12", service_provider: "In-house maintenance"}
+      - {id: S58, name: "Camera Q-Gate",            type: "inspection scanner",  ideal_cycle_s: 25, x: 2.5, z: -58, next_maintenance_due: "2026-02-11", service_provider: "ABB / Isra Vision"}
+      - {id: S59, name: "Hot Test Cell",            type: "test cell",           ideal_cycle_s: 85, x: -2.5, z: -58, next_maintenance_due: "2025-11-25", service_provider: "AVL test systems"}
+      - {id: S60, name: "EOL · Pass / Ship",        type: "inspection scanner",  ideal_cycle_s: 30, x: -7.5, z: -58, next_maintenance_due: "2026-01-28", service_provider: "In-house maintenance"}
+
+  TOYOTA_WH:
+    name: "Toyota Parts Depot · Bengaluru (representative twin)"
+    product: warehouse
+    flow: [[W1,W2],[W2,W3],[W3,W4],[W4,W5],[W5,W6],[W6,W7],
+           [W7,W8],[W8,W9],[W9,W10],[W10,W11],[W11,W12],[W12,W13]]
+    zones:
+      - {id: wh_large, label: "LARGE PARTS HOUSE · GROUND",  x: -22, z: -24, w: 44, d: 30}
+      - {id: wh_ship,  label: "STAGING · PACK · SHIPPING",   x: -16, z: 8,   w: 32, d: 10}
+      - {id: wh_dock,  label: "TRUCK DOCKS · CANOPY",        x: -16, z: 19,  w: 32, d: 6}
+    stations:
+      # level 1 = MEZZANINE (small parts), level 0 = GROUND (large parts).
+      - {id: W1,  name: "Pick-Slip Board",         type: "slip board",        level: 1, ideal_cycle_s: 15, x: 0,   z: -22, service_provider: "In-house"}
+      - {id: W2,  name: "Small Parts Pick · A1",   type: "small parts pick",  level: 1, ideal_cycle_s: 35, x: -11, z: -8,  service_provider: "In-house / RF picking"}
+      - {id: W3,  name: "Small Parts Pick · A2",   type: "small parts pick",  level: 1, ideal_cycle_s: 35, x: 11,  z: -8,  service_provider: "In-house / RF picking"}
+      - {id: W4,  name: "Large Parts Pick · G1",   type: "large parts pick",  level: 0, ideal_cycle_s: 45, x: -11, z: -8,  service_provider: "In-house / forklift"}
+      - {id: W5,  name: "Large Parts Pick · G2",   type: "large parts pick",  level: 0, ideal_cycle_s: 45, x: 11,  z: -8,  service_provider: "In-house / forklift"}
+      - {id: W6,  name: "Goods Lift",              type: "goods lift",        level: 0, ideal_cycle_s: 40, x: 18,  z: 6,   service_provider: "Johnson Lifts"}
+      - {id: W7,  name: "Staging Conveyor 1",      type: "staging conveyor",  level: 0, ideal_cycle_s: 30, x: -9,  z: 12,  service_provider: "In-house"}
+      - {id: W8,  name: "Staging Conveyor 2",      type: "staging conveyor",  level: 0, ideal_cycle_s: 30, x: 0,   z: 12,  service_provider: "In-house"}
+      - {id: W9,  name: "Staging Conveyor 3",      type: "staging conveyor",  level: 0, ideal_cycle_s: 30, x: 9,   z: 12,  service_provider: "In-house"}
+      - {id: W10, name: "Pack & Consolidate",      type: "pack station",      level: 0, ideal_cycle_s: 50, x: 0,   z: 16,  service_provider: "In-house"}
+      - {id: W11, name: "Truck Dock 1 / Scan",     type: "truck dock",        level: 0, ideal_cycle_s: 40, x: -9,  z: 23,  service_provider: "Dispatch"}
+      - {id: W12, name: "Truck Dock 2 / Scan",     type: "truck dock",        level: 0, ideal_cycle_s: 40, x: 0,   z: 23,  service_provider: "Dispatch"}
+      - {id: W13, name: "Truck Dock 3 / Scan",     type: "truck dock",        level: 0, ideal_cycle_s: 40, x: 9,   z: 23,  service_provider: "Dispatch"}

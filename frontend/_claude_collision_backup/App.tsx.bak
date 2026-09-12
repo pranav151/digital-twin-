@@ -1,0 +1,65 @@
+import { useEffect, useState } from "react";
+import { connectLive, getBottleneck } from "./api";
+import type { Snapshot } from "./types";
+import { Overview } from "./pages/Overview";
+import { WhatIf } from "./pages/WhatIf";
+import { MachineRail } from "./components/MachineRail";
+import "./styles.css";
+
+export default function App() {
+  const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<"overview" | "whatif">("overview");
+  const [series, setSeries] = useState<{ t: string; v: number }[]>([]);
+  const [bottleneck, setBottleneck] = useState<string | null>(null);
+
+  useEffect(() => connectLive(setSnap, setConnected), []);
+
+  useEffect(() => {
+    if (!snap?.kpi?.line) return;
+    const t = new Date((snap.ts || Date.now() / 1000) * 1000).toLocaleTimeString().slice(0, 8);
+    setSeries((prev) => [...prev, { t, v: snap.kpi.line.units_per_hr || 0 }].slice(-80));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snap?.ts]);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => getBottleneck("L1", "1h").then((b) => alive && b && setBottleneck(b.bottleneck));
+    load();
+    const id = setInterval(load, 8000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  const stationIds = (snap?.stations || []).map((s) => s.station_id);
+  const toggle = (s: string) => setSelected((cur) => (cur === s ? null : s));
+
+  return (
+    <div className="shell">
+      <div className="brand">
+        <div className="logo">⚙️</div>
+        <div><b>Factory Twin</b><small>Operational Overview</small></div>
+      </div>
+
+      <div className="topbar">
+        <span className="chip">🏭 Plant 1 · Line L1</span>
+        <span className="chip">🕒 Live · last 1h</span>
+        <div className="seg">
+          <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>Overview</button>
+          <button className={tab === "whatif" ? "active" : ""} onClick={() => setTab("whatif")}>What-If</button>
+        </div>
+        <span className="spacer" />
+        <span className="chip"><span className={"dot " + (connected ? "live-on" : "live-off")} /> {connected ? "Live" : "Reconnecting…"}</span>
+        <span className="chip btn" onClick={() => setSelected(null)}>Reset view</span>
+      </div>
+
+      <MachineRail snap={snap} selected={selected} onSelect={toggle} />
+
+      <main className="main">
+        {tab === "overview"
+          ? <Overview snap={snap} selected={selected} onSelect={toggle} series={series} bottleneck={bottleneck} />
+          : <WhatIf stations={stationIds} />}
+      </main>
+    </div>
+  );
+}

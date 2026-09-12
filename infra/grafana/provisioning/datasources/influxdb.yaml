@@ -1,0 +1,17 @@
+# Auto-provisioned Grafana datasource → our InfluxDB historian (Flux).
+# Values come from the container env (see docker-compose.yml), which mirrors the
+# app's INFLUX_* settings so Grafana reads the same bucket ingestion writes to.
+apiVersion: 1
+datasources:
+  - name: FactoryTwin-Influx
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: ${INFLUX_ORG}
+      defaultBucket: ${INFLUX_BUCKET}
+      tlsSkipVerify: true
+    secureJsonData:
+      token: ${INFLUX_TOKEN}
