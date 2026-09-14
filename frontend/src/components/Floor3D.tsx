@@ -1616,11 +1616,9 @@ function WarehouseBuild({ whFloor }: { whFloor: "both" | "ground" | "mezz" }) {
       <GoodsLift x={-4.5} z={6.6} phase={0} />
       <GoodsLift x={4.5} z={6.6} phase={0.5} />
 
-      {/* ===== STAGING (3 conveyors) + PACK + TRUCK DOCKS under a canopy ===== */}
+      {/* ===== STAGING (3 conveyors) + PACK + TRUCK DOCKS (open, no canopy) ===== */}
       {[-9, 0, 9].map((x, i) => <Conveyor key={`sc${i}`} a={[x, 8]} b={[x, 15.5]} />)}
       <mesh position={[0, 0.45, 16.4]} castShadow><boxGeometry args={[3.0, 0.9, 1.4]} /><meshStandardMaterial color="#7e848d" metalness={0.35} roughness={0.55} /></mesh>
-      {/* canopy roof over the docks */}
-      <mesh position={[0, 5.4, 24]} castShadow><boxGeometry args={[34, 0.3, 9]} /><meshStandardMaterial color="#8a9098" metalness={0.3} roughness={0.7} /></mesh>
       {[-9, 0, 9].map((x, i) => (
         <group key={`dock${i}`} position={[x, 0, 22]}>
           {/* dock door frame */}
@@ -2216,12 +2214,11 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
 // Z-axis: back (−Z) → front (+Z, truck/dock side)
 //
 // Zone layout (right → left on X):
-//   D22 Reserve  → D22 Primary → RNR → Magazine+Normal Storage
-// PMSP: back-right behind D22 zones
-// Central road: Z = −13 to −7  (tow motors / kurrurs / forklifts)
+//   R & R Storage → D22 Storage → VH Storage → Hyundai Storage → SSP Storage
+// Central road: Z = −3 to +3 (tow motors / kurrurs / forklifts)
 //   Yellow barricades on BOTH sides of the road
-// Staging/sorting/packing: Z = −6 to 4 (except RNR front which has racks)
-// Truck docks: Z = 5 to 22 (open, no canopy)
+// Staging/sorting/packing: Z = 4 to 14 (except R & R front which has 4-story racks)
+// Truck docks: Z = 22 (open bays, no canopy)
 // ============================================================
 
 /** Barricade post + horizontal rails on one side of the road (repeated along X). */
@@ -2279,86 +2276,62 @@ function StagingConveyor({ x, z0, z1 }: { x: number; z0: number; z1: number }) {
   );
 }
 
-/** PMSP (back right) — deep shelving behind D22 zones. */
-function PMSPStorage({ x0, x1, z0, z1 }: { x0: number; x1: number; z0: number; z1: number }) {
-  return (
-    <group>
-      <RackBlock x0={x0} x1={x1} z0={z0} z1={z1} levels={4} rowGap={2.0} label="PMSP Storage" labelZ={(z0 + z1) / 2} />
-      {/* perimeter wall at the very back */}
-      <mesh position={[(x0 + x1) / 2, 4.0, z0 - 0.1]} castShadow>
-        <boxGeometry args={[x1 - x0 + 1, 8.0, 0.25]} />
-        <meshStandardMaterial color="#3a4252" metalness={0.2} roughness={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-/** The NPCC warehouse — accurate zone layout per site drawing.
+/** The NPCC warehouse — layout matching old plan and site drawing.
  *
- *  Right → Left:  D22 Reserve | D22 Primary | RNR | Magazine+Normal Storage
- *  Back:          PMSP Storage (behind D22 Reserve + D22 Primary)
- *  Middle road:   tow-motor / kurrur / forklift road with yellow barricades both sides
- *  Staging:       sorting + packing + scanning conveyors (except RNR front = racks)
- *  Docks:         open truck loading/unloading bays (no canopy)
+ *  Left → Right:  SSP Storage | Hyundai Storage | VH Storage | D22 Storage | R & R Storage
+ *  Front of R&R:  R & R Front Racks (4-story storage with racks)
+ *  Middle road:   tow-motor / kurrur / forklift road with yellow barricades on BOTH sides
+ *  Staging:       sorting + packing + scanning conveyors
+ *  Docks:         open truck loading/unloading bays at z=22 (no canopy)
  *
  *  All main storage zones are 4 stories (including ground level).
- *  Row counts are placeholder; exact numbers will be updated when provided.
  */
 function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }) {
   if (whFloor === "mezz") return null;
 
-  // ── Zone boundaries ──────────────────────────────────────────────────────
-  // Storage runs at Z: -24 (back wall) to Z: -14 (road back edge)
-  // Road:      Z: -13 to -7
-  // Staging:   Z: -6  to  4  (open floor, conveyors, packing tables)
-  // RNR front racks: replace staging in front of RNR (same Z band but has racks)
-  // Docks:     Z:  5  to 34
+  // ── Zone boundaries (strictly within factory footprint) ──────────────────
+  const zStorageBack  = -24;   // back wall of storage halls (matches mezzanine)
+  const zStorageFront =  -4;   // front face of storage racks
+  const zRoadBack     =  -3;   // central road back edge (storage side)
+  const zRoadFront    =   3;   // central road front edge (staging side)
+  const zStagingBack  =   4;   // staging / sorting area back edge
+  const zStagingFront =  14;   // staging front edge / dock apron
+  const zDock         =  22;   // truck docks line (matches WarehouseBuild)
 
-  const zStorageBack  = -24;   // back wall of storage halls
-  const zStorageFront = -14;   // front face of storage racks
-  const zRoadBack     = -13;   // road (tow-motor lane) back edge
-  const zRoadFront    = -7;    // road front edge
-  const zStagingFront =  4;    // front of staging / sorting area
-  const zDockFront    =  22;   // front edge of truck bays
+  // ── Storage zones: 5 zones matching original plan and screenshot ──────────
+  const zones: { x0: number; x1: number; label: string; frontRacks?: boolean }[] = [
+    { x0: -33, x1: -22, label: "R & R Storage", frontRacks: true },
+    { x0: -46, x1: -35, label: "D22 Storage" },
+    { x0: -59, x1: -48, label: "VH Storage" },
+    { x0: -72, x1: -61, label: "Hyundai Storage" },
+    { x0: -85, x1: -74, label: "SSP Storage" },
+  ];
 
-  // ── Storage zones: [x0, x1, label, hasFrontRacks] ────────────────────────
-  // Right → Left (most positive X first, nearest the existing mezzanine)
-  const D22R  = { x0: -22, x1: -10, label: "D22 Reserve Storage",  frontRacks: false };
-  const D22P  = { x0: -38, x1: -24, label: "D22 Primary Storage",  frontRacks: false };
-  const RNR   = { x0: -54, x1: -40, label: "RNR Storage",          frontRacks: true  };
-  const MAG   = { x0: -68, x1: -56, label: "Magazine (Small Parts)",frontRacks: false };
-  const NORM  = { x0: -84, x1: -70, label: "Normal Storage (Large)",frontRacks: false };
-  const allZones = [D22R, D22P, RNR, MAG, NORM];
-
-  // PMSP: behind D22 Reserve + D22 Primary (back-right)
-  const pmspX0 = D22P.x0, pmspX1 = D22R.x1;
-  const pmspZ0 = zStorageBack - 12, pmspZ1 = zStorageBack;
-
-  // ── Road ─────────────────────────────────────────────────────────────────
-  const roadX0 = NORM.x0 - 2, roadX1 = -8;
+  // ── Central Road: spans across the storage zones ──────────────────────────
+  const roadX0 = -88, roadX1 = -8;
   const roadLen = roadX1 - roadX0, roadCx = (roadX0 + roadX1) / 2;
   const roadCz  = (zRoadBack + zRoadFront) / 2;
   const roadW   = zRoadFront - zRoadBack;
 
   // ── Structural pillars (floor → roof, 8 m) ───────────────────────────────
   const pillars: [number, number, number][] = [];
-  for (let px = NORM.x0 + 2; px <= D22R.x1 - 2; px += 14)
+  for (let px = -84; px <= -20; px += 14)
     for (let pz = zStorageBack + 2; pz <= zStagingFront; pz += 12)
       pillars.push([px, 4.0, pz]);
 
   // ── Dock positions ────────────────────────────────────────────────────────
-  const dockXs = [-18, -32, -48, -62, -78];
+  const dockXs = [-30, -48, -66, -82];
 
-  // ── Staging conveyors (packing + scan) — in staging zone except RNR front ─
-  const conveyorXs = [-15, -29, -66, -74]; // one per zone except RNR (has racks)
+  // ── Staging conveyors (in staging zone for non-RNR areas) ──────────────────
+  const conveyorXs = [-40, -53, -66, -80];
 
   return (
     <group>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          STORAGE HALLS — 4-story pallet racking
+          STORAGE HALLS — 4-story pallet racking (5 zones)
           ═══════════════════════════════════════════════════════════════════ */}
-      {allZones.map((z, i) => (
+      {zones.map((z, i) => (
         <RackBlock
           key={`zone-${i}`}
           x0={z.x0} x1={z.x1}
@@ -2371,21 +2344,16 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
       ))}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          RNR FRONT RACKS — racks in the staging zone in front of RNR
+          R & R FRONT RACKS — racks in the staging zone in front of R & R
           ═══════════════════════════════════════════════════════════════════ */}
       <RackBlock
-        x0={RNR.x0} x1={RNR.x1}
-        z0={zRoadFront + 0.5} z1={zStagingFront}
+        x0={-33} x1={-22}
+        z0={zStagingBack + 0.5} z1={zStagingFront}
         levels={4}
         rowGap={2.2}
-        label="RNR Front Racks"
+        label="R & R Front Racks"
         labelZ={zStagingFront - 1}
       />
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          PMSP STORAGE — back-right behind D22 zones
-          ═══════════════════════════════════════════════════════════════════ */}
-      <PMSPStorage x0={pmspX0} x1={pmspX1} z0={pmspZ0} z1={pmspZ1} />
 
       {/* ═══════════════════════════════════════════════════════════════════
           STRUCTURAL PILLARS
@@ -2420,21 +2388,21 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
       <ZoneTag x={roadCx} z={roadCz} text="Tow Motor Road" />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          STAGING + SORTING + PACKING AREA (Z: -6 to 4)
+          STAGING + SORTING + PACKING AREA (Z: 4 to 14)
           Conveyors + packing tables + scanner arches
           ═══════════════════════════════════════════════════════════════════ */}
-      {/* staging floor stripe */}
+      {/* staging floor stripe for D22, VH, Hyundai, SSP */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}
-        position={[(D22R.x1 + NORM.x0) / 2, 0.015, (zRoadFront + zStagingFront) / 2]} receiveShadow>
-        <planeGeometry args={[D22R.x1 - NORM.x0, zStagingFront - zRoadFront]} />
+        position={[(-35 + -85) / 2, 0.015, (zStagingBack + zStagingFront) / 2]} receiveShadow>
+        <planeGeometry args={[85 - 35, zStagingFront - zStagingBack]} />
         <meshStandardMaterial color="#3a4a42" roughness={0.9} metalness={0.05} />
       </mesh>
-      <ZoneTag x={(D22R.x1 + D22P.x0) / 2} z={(zRoadFront + zStagingFront) / 2} text="Staging & Sorting" />
-      <ZoneTag x={(MAG.x1 + NORM.x0) / 2}  z={(zRoadFront + zStagingFront) / 2} text="Packing Area" />
+      <ZoneTag x={-40} z={(zStagingBack + zStagingFront) / 2} text="Staging & Sorting" />
+      <ZoneTag x={-74} z={(zStagingBack + zStagingFront) / 2} text="Packing Area" />
 
       {/* packing tables (grey benches) */}
-      {([-20, -30, -60, -72] as number[]).map((x, i) => (
-        <mesh key={`pt-${i}`} position={[x, 0.9, -2]} castShadow>
+      {([-43, -56, -69, -82] as number[]).map((x, i) => (
+        <mesh key={`pt-${i}`} position={[x, 0.9, 6]} castShadow>
           <boxGeometry args={[2.4, 0.08, 0.9]} />
           <meshStandardMaterial color="#7a8490" metalness={0.3} roughness={0.6} />
         </mesh>
@@ -2442,49 +2410,49 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
 
       {/* staging conveyors with scanner arches */}
       {conveyorXs.map((x, i) => (
-        <StagingConveyor key={`sc-${i}`} x={x} z0={zRoadFront + 0.6} z1={zStagingFront + 1} />
+        <StagingConveyor key={`sc-${i}`} x={x} z0={zStagingBack + 0.6} z1={zStagingFront} />
       ))}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TRUCK DOCKS — open bays (no canopy), same style as old plan
+          RECEIVING / SHIPPING ZONES (matching old plan)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <ZoneTag x={-30} z={16} text="Depot Shipping" />
+      <ZoneTag x={-52} z={16} text="D22 Unloading & Receiving" />
+      <ZoneTag x={-74} z={16} text="Local Receiving" />
+      {/* dollies staged at receiving zones like old plan */}
+      {([-34, -52, -70] as number[]).map((x, i) => (<group key={`dc-${i}`} position={[x, 0, 15]}><DollyCage /></group>))}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          TRUCK DOCKS — open bays (no canopy), aligned at z=22 like old plan
           ═══════════════════════════════════════════════════════════════════ */}
       {dockXs.map((x, i) => (
-        <group key={`dock-${i}`} position={[x, 0, zStagingFront + 8]}>
-          <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a", "#6a3b5a"][i % 5]} />
+        <group key={`dock-${i}`} position={[x, 0, zDock]}>
+          <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a"][i % 4]} />
           <YellowBay x={0} z={-5} />
         </group>
       ))}
-      {/* zone labels for receiving/shipping — same as old plan */}
-      <ZoneTag x={-18} z={zStagingFront + 11} text="Depot Shipping" />
-      <ZoneTag x={-48} z={zStagingFront + 11} text="D22 Unloading & Receiving" />
-      <ZoneTag x={-78} z={zStagingFront + 11} text="Local Receiving" />
-      {/* dollies staged at receiving zones like old plan */}
-      {([-32, -48, -66] as number[]).map((x, i) => (<group key={`dc-${i}`} position={[x, 0, zStagingFront + 6]}><DollyCage /></group>))}
 
       {/* ═══════════════════════════════════════════════════════════════════
           ZONE LABELS (front-face of storage)
           ═══════════════════════════════════════════════════════════════════ */}
-      <ZoneTag x={(D22R.x0 + D22R.x1) / 2}  z={zStorageFront + 1} text="D22 Reserve" />
-      <ZoneTag x={(D22P.x0 + D22P.x1) / 2}  z={zStorageFront + 1} text="D22 Primary" />
-      <ZoneTag x={(RNR.x0  + RNR.x1)  / 2}  z={zStorageFront + 1} text="RNR Storage" />
-      <ZoneTag x={(MAG.x0  + MAG.x1)  / 2}  z={zStorageFront + 1} text="Magazine" />
-      <ZoneTag x={(NORM.x0 + NORM.x1) / 2}  z={zStorageFront + 1} text="Normal Storage" />
-      <ZoneTag x={(pmspX0  + pmspX1)  / 2}  z={(pmspZ0 + pmspZ1) / 2} text="PMSP" />
+      {zones.map((z, i) => (
+        <ZoneTag key={`tag-${i}`} x={(z.x0 + z.x1) / 2} z={zStorageFront + 1} text={z.label} />
+      ))}
 
       {/* ═══════════════════════════════════════════════════════════════════
           LIVE WORKERS + VEHICLES
           ═══════════════════════════════════════════════════════════════════ */}
       {/* workers in staging lane */}
-      <AisleWalker a={[D22R.x1 - 2, -1]} b={[NORM.x0 + 2, -1]} phase={0}    tone={SKIN[0]} />
-      <AisleWalker a={[NORM.x0 + 2,  2]} b={[D22R.x1 - 2,  2]} phase={0.4}  tone={SKIN[1]} />
+      <AisleWalker a={[-35, 7]} b={[-85, 7]} phase={0}   tone={SKIN[0]} />
+      <AisleWalker a={[-85, 11]} b={[-35, 11]} phase={0.45} tone={SKIN[1]} />
       {/* workers at packing tables */}
-      {([-20, -30, -60, -72] as number[]).map((x, i) => (
-        <group key={`pw-${i}`} position={[x, 0, -1.6]} rotation={[0, Math.PI / 2, 0]}>
+      {([-43, -56, -69, -82] as number[]).map((x, i) => (
+        <group key={`pw-${i}`} position={[x, 0, 6.6]} rotation={[0, Math.PI / 2, 0]}>
           <WarehouseWorker tone={SKIN[(i + 2) % SKIN.length]} phase={i * 0.55} vest="#2f9e8f" />
         </group>
       ))}
       {/* workers at dock area */}
-      {([[-18, zStagingFront + 8], [-48, zStagingFront + 8]] as [number, number][]).map(([x, z], i) => (
+      {([[-30, 18], [-52, 18], [-74, 18]] as [number, number][]).map(([x, z], i) => (
         <group key={`dw-${i}`} position={[x, 0, z]} rotation={[0, -Math.PI / 2, 0]}>
           <WarehouseWorker tone={SKIN[(i + 1) % SKIN.length]} phase={i * 0.7} vest="#e8a12a" />
         </group>
@@ -2495,9 +2463,9 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
         color="#f5c518"
       />
       {/* forklift working in RNR front-rack aisle */}
-      <WorkingForklift x={(RNR.x0 + RNR.x1) / 2} z0={zRoadFront + 1} z1={zStagingFront - 1} phase={0.3} />
+      <WorkingForklift x={-27.5} z0={zStagingBack + 1} z1={zStagingFront - 1} phase={0.3} />
       {/* second forklift in D22 aisle */}
-      <WorkingForklift x={(D22P.x0 + D22P.x1) / 2} z0={zStorageBack + 2} z1={zStorageFront - 1} phase={0.7} />
+      <WorkingForklift x={-40.5} z0={zStorageBack + 2} z1={zStorageFront - 1} phase={0.7} />
     </group>
   );
 }
@@ -2565,7 +2533,7 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
   // the warehouse floor is far bigger than its station markers — size the ground,
   // roof trusses, high-bay lights and perimeter columns to the whole building so
   // the new storage hall gets a real floor + ceiling instead of floating on the bg.
-  if (product === "warehouse") { minX = -92; maxX = 16; minZ = -38; maxZ = 24; }
+  if (product === "warehouse") { minX = -90; maxX = 16; minZ = -34; maxZ = 26; }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const gw = (maxX - minX) + 12, gd = (maxZ - minZ) + 12;
   // central-corridor rectangle for the AGV loop (between the two bays)
@@ -2631,7 +2599,7 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
       {product !== "warehouse" && <GantryCrane x0={minX - 1} x1={maxX + 1} z0={minZ - 1.5} z1={maxZ + 1.5} />}
       {product === "warehouse" && <WarehouseBuild whFloor={whFloor} />}
       {product === "warehouse" && <WarehouseActivity whFloor={whFloor} />}
-      {/* the NEW remaining warehouse (R&R / D22 / VH / Hyundai / SSP / PMSP + road) */}
+      {/* the NEW remaining warehouse (R&R / D22 / VH / Hyundai / SSP + central road) */}
       {product === "warehouse" && <WarehouseExtension whFloor={whFloor} />}
 
       {/* overhead power-and-free carrier line — engines hang and index station to
@@ -2779,15 +2747,15 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
     const footprint = Math.max(maxX - minX, maxZ - minZ, 14);
     if (isWh) {
       // The NPCC warehouse spans:
-      //   X: -90 (Normal Storage left wall) to +16 (mezzanine right edge)
-      //   Z: -37 (PMSP back wall) to +24 (open dock front)
-      // Frame from a high 3/4 view looking from the dock side back across storage.
-      const minX = -92, maxX = 16, minZ = -38, maxZ = 24;
+      //   X: -90 (SSP Storage left wall) to +16 (mezzanine right edge)
+      //   Z: -34 (back wall) to +26 (truck dock front)
+      // Elevated 3/4 overview looking toward the docks across the whole facility.
+      const minX = -90, maxX = 16, minZ = -34, maxZ = 26;
       const wcx = (minX + maxX) / 2;
       const fp = Math.max(maxX - minX, maxZ - minZ, 20);
-      const czT = (minZ + maxZ) / 2;
-      const d = fp * 0.42 + 14;
-      return { position: [wcx + d * 0.28, d * 0.52, czT + d * 0.68] as [number, number, number], cx: wcx, cz: czT, ty: 1.8 };
+      const czT = -4;
+      const d = fp * 0.44 + 12;
+      return { position: [wcx + d * 0.34, d * 0.55, czT + d * 0.62] as [number, number, number], cx: wcx, cz: czT, ty: 1.8 };
     }
     const dist = footprint * 0.8 + 8;
     // 3/4 corner overview — close enough that the hero workpieces (car bodies) read
