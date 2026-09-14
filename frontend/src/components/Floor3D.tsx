@@ -2215,26 +2215,10 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
 //
 // Zone layout (right → left on X):
 //   R & R Storage → D22 Storage → VH Storage → Hyundai Storage → SSP Storage
-// Central road: Z = −3 to +3 (tow motors / kurrurs / forklifts)
-//   Yellow barricades on BOTH sides of the road
+// Central gangway: Z = −3 to +3 (painted corridor lines)
 // Staging/sorting/packing: Z = 4 to 14 (except R & R front which has 4-story racks)
 // Truck docks: Z = 22 (open bays, no canopy)
 // ============================================================
-
-/** Barricade post + horizontal rails on one side of the road (repeated along X). */
-function RoadBarricade({ x0, x1, z, side }: { x0: number; x1: number; z: number; side: "front" | "back" }) {
-  const posts: [number, number, number][] = [];
-  for (let x = x0 + 1; x <= x1 - 1; x += 3.0) posts.push([x, 0.5, z]);
-  const cx = (x0 + x1) / 2, len = x1 - x0;
-  return (
-    <group>
-      <InstancedBoxes items={posts} args={[0.12, 1.0, 0.12]} color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.5} />
-      {[0.3, 0.7].map((y, k) => (
-        <mesh key={k} position={[cx, y, z]}><boxGeometry args={[len, 0.08, 0.08]} /><meshStandardMaterial color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} roughness={0.5} /></mesh>
-      ))}
-    </group>
-  );
-}
 
 /** Staging conveyor — a flat belt with a scanner arch at the exit end. */
 function StagingConveyor({ x, z0, z1 }: { x: number; z0: number; z1: number }) {
@@ -2292,8 +2276,8 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
   // ── Zone boundaries (strictly within factory footprint) ──────────────────
   const zStorageBack  = -24;   // back wall of storage halls (matches mezzanine)
   const zStorageFront =  -4;   // front face of storage racks
-  const zRoadBack     =  -3;   // central road back edge (storage side)
-  const zRoadFront    =   3;   // central road front edge (staging side)
+  const zGangwayBack  =  -3;   // gangway back boundary line
+  const zGangwayFront =   3;   // gangway front boundary line
   const zStagingBack  =   4;   // staging / sorting area back edge
   const zStagingFront =  14;   // staging front edge / dock apron
   const zDock         =  22;   // truck docks line (matches WarehouseBuild)
@@ -2307,11 +2291,10 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
     { x0: -85, x1: -74, label: "SSP Storage" },
   ];
 
-  // ── Central Road: spans across the storage zones ──────────────────────────
-  const roadX0 = -88, roadX1 = -8;
-  const roadLen = roadX1 - roadX0, roadCx = (roadX0 + roadX1) / 2;
-  const roadCz  = (zRoadBack + zRoadFront) / 2;
-  const roadW   = zRoadFront - zRoadBack;
+  // ── Central Gangway: spans across the storage zones ──────────────────────
+  const gangwayX0 = -88, gangwayX1 = -8;
+  const gangwayLen = gangwayX1 - gangwayX0, gangwayCx = (gangwayX0 + gangwayX1) / 2;
+  const gangwayCz  = (zGangwayBack + zGangwayFront) / 2;
 
   // ── Structural pillars (floor → roof, 8 m) ───────────────────────────────
   const pillars: [number, number, number][] = [];
@@ -2365,27 +2348,18 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
       />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          CENTRAL ROAD — tow-motor / kurrur / forklift lane
-          Yellow barricades on BOTH sides (front and back of road)
+          CENTRAL GANGWAY — open corridor (no asphalt road, no barricades)
           ═══════════════════════════════════════════════════════════════════ */}
-      {/* road surface */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[roadCx, 0.02, roadCz]} receiveShadow>
-        <planeGeometry args={[roadLen, roadW]} />
-        <meshStandardMaterial color="#31373f" roughness={0.88} />
+      {/* painted yellow aisle boundary stripes on warehouse floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[gangwayCx, 0.02, zGangwayBack]}>
+        <planeGeometry args={[gangwayLen, 0.14]} />
+        <meshBasicMaterial color="#caa63a" transparent opacity={0.75} />
       </mesh>
-      {/* centre dashed line */}
-      {Array.from({ length: Math.floor(roadLen / 4) }).map((_, i) => (
-        <mesh key={`dash-${i}`} rotation={[-Math.PI / 2, 0, 0]}
-          position={[roadX0 + 2 + i * 4, 0.03, roadCz]}>
-          <planeGeometry args={[2, 0.15]} />
-          <meshBasicMaterial color="#caa63a" />
-        </mesh>
-      ))}
-      {/* barricades — BACK side of road (storage side) */}
-      <RoadBarricade x0={roadX0} x1={roadX1} z={zRoadBack} side="back" />
-      {/* barricades — FRONT side of road (staging side) */}
-      <RoadBarricade x0={roadX0} x1={roadX1} z={zRoadFront} side="front" />
-      <ZoneTag x={roadCx} z={roadCz} text="Tow Motor Road" />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[gangwayCx, 0.02, zGangwayFront]}>
+        <planeGeometry args={[gangwayLen, 0.14]} />
+        <meshBasicMaterial color="#caa63a" transparent opacity={0.75} />
+      </mesh>
+      <ZoneTag x={gangwayCx} z={gangwayCz} text="Gangway" />
 
       {/* ═══════════════════════════════════════════════════════════════════
           STAGING + SORTING + PACKING AREA (Z: 4 to 14)
@@ -2457,9 +2431,9 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
           <WarehouseWorker tone={SKIN[(i + 1) % SKIN.length]} phase={i * 0.7} vest="#e8a12a" />
         </group>
       ))}
-      {/* tow motor (tugger) on the central road */}
+      {/* tow motor (tugger) moving through the gangway */}
       <Tugger
-        loop={[[roadX0 + 4, roadCz], [roadX1 - 4, roadCz], [roadX1 - 4, roadCz - 1], [roadX0 + 4, roadCz - 1]]}
+        loop={[[gangwayX0 + 4, gangwayCz], [gangwayX1 - 4, gangwayCz], [gangwayX1 - 4, gangwayCz - 0.8], [gangwayX0 + 4, gangwayCz - 0.8]]}
         color="#f5c518"
       />
       {/* forklift working in RNR front-rack aisle */}
@@ -2599,7 +2573,7 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
       {product !== "warehouse" && <GantryCrane x0={minX - 1} x1={maxX + 1} z0={minZ - 1.5} z1={maxZ + 1.5} />}
       {product === "warehouse" && <WarehouseBuild whFloor={whFloor} />}
       {product === "warehouse" && <WarehouseActivity whFloor={whFloor} />}
-      {/* the NEW remaining warehouse (R&R / D22 / VH / Hyundai / SSP + central road) */}
+      {/* the NEW remaining warehouse (R&R / D22 / VH / Hyundai / SSP + central gangway) */}
       {product === "warehouse" && <WarehouseExtension whFloor={whFloor} />}
 
       {/* overhead power-and-free carrier line — engines hang and index station to
