@@ -1677,66 +1677,127 @@ function Scanner() {
   );
 }
 
-/** A cleaner warehouse operator: cap + hi-vis vest, legs that swing when walking,
- *  and an RF scanner gun raised in one hand. */
-function WarehouseWorker({ walking = false, movingRef, tone = SKIN[0], phase = 0, vest = "#e8a12a" }: { walking?: boolean; movingRef?: { current: boolean }; tone?: string; phase?: number; vest?: string }) {
-  const legL = useRef<THREE.Group>(null), legR = useRef<THREE.Group>(null), arm = useRef<THREE.Group>(null), body = useRef<THREE.Group>(null);
+/** A warehouse operator: white hard hat, hi-vis vest with reflective bands,
+ *  rounded limbs, a free arm that swings while walking, a scanner arm raised. */
+function WarehouseWorker({ walking = false, movingRef, tone = SKIN[0], phase = 0, vest = "#f28c1e" }: { walking?: boolean; movingRef?: { current: boolean }; tone?: string; phase?: number; vest?: string }) {
+  const legL = useRef<THREE.Group>(null), legR = useRef<THREE.Group>(null), arm = useRef<THREE.Group>(null), armL = useRef<THREE.Group>(null), body = useRef<THREE.Group>(null);
   useFrame((st) => {
     const w = movingRef ? movingRef.current : walking;
-    const t = st.clock.elapsedTime * 4.2 + phase;
+    const t = st.clock.elapsedTime * 4.6 + phase;
     const s = w ? Math.sin(t) * 0.5 : 0;
     if (legL.current) legL.current.rotation.x = s;
     if (legR.current) legR.current.rotation.x = -s;
-    if (body.current) body.current.position.y = w ? Math.abs(Math.sin(t)) * 0.03 : 0;
-    if (arm.current) arm.current.rotation.x = -1.15 + Math.sin(st.clock.elapsedTime * 2.2 + phase) * (w ? 0.05 : 0.22);
+    if (armL.current) armL.current.rotation.x = w ? -s * 0.95 : -0.1;
+    if (body.current) { body.current.position.y = w ? Math.abs(Math.sin(t)) * 0.03 : 0; body.current.rotation.x = w ? 0.05 : 0; }
+    if (arm.current) arm.current.rotation.x = -1.05 + Math.sin(st.clock.elapsedTime * 2.2 + phase) * (w ? 0.06 : 0.2);
   });
   return (
     <group>
-      {/* legs (pivot at hips) */}
-      <group ref={legL} position={[-0.1, 0.82, 0]}><mesh position={[0, -0.42, 0]} castShadow><boxGeometry args={[0.14, 0.84, 0.16]} /><meshStandardMaterial color="#2a2f36" roughness={0.85} /></mesh></group>
-      <group ref={legR} position={[0.1, 0.82, 0]}><mesh position={[0, -0.42, 0]} castShadow><boxGeometry args={[0.14, 0.84, 0.16]} /><meshStandardMaterial color="#2a2f36" roughness={0.85} /></mesh></group>
+      {/* legs — hip pivot: tapered trousers + safety boots */}
+      <group ref={legL} position={[-0.1, 0.82, 0]}>
+        <mesh position={[0, -0.36, 0]} castShadow><cylinderGeometry args={[0.08, 0.065, 0.72, 10]} /><meshStandardMaterial color="#2b3038" roughness={0.85} /></mesh>
+        <mesh position={[0, -0.74, 0.04]} castShadow><boxGeometry args={[0.14, 0.11, 0.26]} /><meshStandardMaterial color="#141619" roughness={0.7} /></mesh>
+      </group>
+      <group ref={legR} position={[0.1, 0.82, 0]}>
+        <mesh position={[0, -0.36, 0]} castShadow><cylinderGeometry args={[0.08, 0.065, 0.72, 10]} /><meshStandardMaterial color="#2b3038" roughness={0.85} /></mesh>
+        <mesh position={[0, -0.74, 0.04]} castShadow><boxGeometry args={[0.14, 0.11, 0.26]} /><meshStandardMaterial color="#141619" roughness={0.7} /></mesh>
+      </group>
       <group ref={body}>
-        {/* torso + hi-vis vest */}
-        <mesh position={[0, 1.06, 0]} castShadow><boxGeometry args={[0.36, 0.52, 0.22]} /><meshStandardMaterial color="#3a4655" roughness={0.7} /></mesh>
-        <mesh position={[0, 1.06, 0.005]} castShadow><boxGeometry args={[0.38, 0.5, 0.24]} /><meshStandardMaterial color={vest} roughness={0.6} /></mesh>
-        {/* reflective bands */}
-        <mesh position={[0, 1.16, 0.13]}><boxGeometry args={[0.38, 0.05, 0.02]} /><meshStandardMaterial color="#dfe6ee" emissive="#dfe6ee" emissiveIntensity={0.3} /></mesh>
-        {/* head + cap */}
-        <mesh position={[0, 1.46, 0]} castShadow><sphereGeometry args={[0.11, 16, 16]} /><meshStandardMaterial color={tone} roughness={0.6} /></mesh>
-        <mesh position={[0, 1.54, 0]}><sphereGeometry args={[0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#20303f" roughness={0.6} /></mesh>
-        <mesh position={[0, 1.5, 0.1]}><boxGeometry args={[0.16, 0.03, 0.08]} /><meshStandardMaterial color="#20303f" roughness={0.6} /></mesh>{/* cap peak */}
-        {/* left arm resting */}
-        <mesh position={[-0.24, 1.05, 0.02]} rotation={[-0.3, 0, 0.15]} castShadow><boxGeometry args={[0.08, 0.46, 0.09]} /><meshStandardMaterial color={vest} roughness={0.6} /></mesh>
-        {/* right arm raised, holding the scanner */}
-        <group ref={arm} position={[0.22, 1.22, 0.04]}>
-          <mesh position={[0, -0.19, 0.14]} castShadow><boxGeometry args={[0.08, 0.46, 0.09]} /><meshStandardMaterial color={vest} roughness={0.6} /></mesh>
-          <group position={[0, -0.4, 0.28]}><Scanner /></group>
+        {/* torso base + hi-vis vest */}
+        <mesh position={[0, 1.08, 0]} castShadow><cylinderGeometry args={[0.16, 0.185, 0.54, 14]} /><meshStandardMaterial color="#33383f" roughness={0.8} /></mesh>
+        <mesh position={[0, 1.07, 0]} castShadow><cylinderGeometry args={[0.195, 0.205, 0.48, 14]} /><meshStandardMaterial color={vest} roughness={0.5} emissive={vest} emissiveIntensity={0.14} /></mesh>
+        {/* two reflective bands */}
+        {[1.17, 0.99].map((y, i) => (<mesh key={i} position={[0, y, 0]}><cylinderGeometry args={[0.2, 0.2, 0.05, 14]} /><meshStandardMaterial color="#e8eef5" emissive="#d7e6ff" emissiveIntensity={0.4} roughness={0.35} metalness={0.1} /></mesh>))}
+        {/* shoulders */}
+        <mesh position={[0, 1.33, 0]}><sphereGeometry args={[0.2, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color={vest} roughness={0.5} /></mesh>
+        {/* neck + head */}
+        <mesh position={[0, 1.42, 0]}><cylinderGeometry args={[0.055, 0.07, 0.08, 8]} /><meshStandardMaterial color={tone} roughness={0.6} /></mesh>
+        <mesh position={[0, 1.53, 0]} castShadow><sphereGeometry args={[0.115, 18, 16]} /><meshStandardMaterial color={tone} roughness={0.65} /></mesh>
+        {/* WHITE hard hat: dome + brim */}
+        <mesh position={[0, 1.585, 0]} castShadow><sphereGeometry args={[0.132, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#eef1f4" roughness={0.35} metalness={0.05} /></mesh>
+        <mesh position={[0, 1.585, 0.04]}><cylinderGeometry args={[0.17, 0.17, 0.02, 18]} /><meshStandardMaterial color="#e6e9ec" roughness={0.4} /></mesh>
+        {/* left arm — swings freely while walking */}
+        <group ref={armL} position={[-0.21, 1.3, 0]}>
+          <mesh position={[0, -0.2, 0]} castShadow><cylinderGeometry args={[0.055, 0.048, 0.46, 8]} /><meshStandardMaterial color={vest} roughness={0.55} /></mesh>
+          <mesh position={[0, -0.45, 0]}><sphereGeometry args={[0.05, 8, 8]} /><meshStandardMaterial color={tone} roughness={0.6} /></mesh>
+        </group>
+        {/* right arm — raised, holding the scanner */}
+        <group ref={arm} position={[0.21, 1.32, 0.02]}>
+          <mesh position={[0, -0.15, 0.12]} rotation={[0.55, 0, 0]} castShadow><cylinderGeometry args={[0.055, 0.048, 0.42, 8]} /><meshStandardMaterial color={vest} roughness={0.55} /></mesh>
+          <group position={[0, -0.32, 0.26]}><Scanner /></group>
         </group>
       </group>
     </group>
   );
 }
 
-/** A depot truck backed into a dock: corrugated container body with rear doors
- *  open toward the dock, a cab, chassis and wheels. */
+/** A wheel + hub. */
+function TruckWheel({ x, z, r = 0.42 }: { x: number; z: number; r?: number }) {
+  return (
+    <group position={[x, r, z]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh castShadow><cylinderGeometry args={[r, r, 0.34, 20]} /><meshStandardMaterial color="#14171c" roughness={0.82} /></mesh>
+      <mesh position={[0, 0.18 * Math.sign(x || 1), 0]}><cylinderGeometry args={[r * 0.5, r * 0.5, 0.06, 14]} /><meshStandardMaterial color="#c9ced6" metalness={0.75} roughness={0.28} /></mesh>
+    </group>
+  );
+}
+
+/** A detailed articulated semi backed into a dock: corrugated trailer with rear
+ *  doors toward the dock, a proper tractor (sleeper cab, hood, grille, chrome
+ *  stacks + tanks, lights, mirrors) and tandem axles. */
 function DepotTruck({ color = "#3b5a8a" }: { color?: string }) {
+  const chrome = "#c9ced6", tyre = "#14171c", glass = "#0a1622";
   return (
     <group>
-      {/* container / box body */}
-      <mesh position={[0, 1.55, 2.9]} castShadow><boxGeometry args={[2.6, 2.6, 5.4]} /><meshStandardMaterial color={color} metalness={0.3} roughness={0.6} /></mesh>
-      {/* vertical corrugation ribs on both sides */}
-      {Array.from({ length: 9 }).map((_, i) => { const z = 0.6 + i * 0.6; return [-1.33, 1.33].map((x, j) => (<mesh key={`${i}-${j}`} position={[x, 1.55, z]}><boxGeometry args={[0.04, 2.4, 0.12]} /><meshStandardMaterial color={color} metalness={0.35} roughness={0.5} /></mesh>)); })}
-      {/* rear doors (toward the dock, -z) slightly open */}
-      <mesh position={[-0.66, 1.55, 0.1]} rotation={[0, 0.4, 0]} castShadow><boxGeometry args={[1.28, 2.5, 0.08]} /><meshStandardMaterial color="#cfd3d9" metalness={0.3} roughness={0.5} /></mesh>
-      <mesh position={[0.66, 1.55, 0.1]} rotation={[0, -0.4, 0]} castShadow><boxGeometry args={[1.28, 2.5, 0.08]} /><meshStandardMaterial color="#cfd3d9" metalness={0.3} roughness={0.5} /></mesh>
-      {/* cab at the far end */}
-      <mesh position={[0, 1.25, 6.4]} castShadow><boxGeometry args={[2.5, 2.1, 1.7]} /><meshStandardMaterial color="#d8dde3" metalness={0.3} roughness={0.5} /></mesh>
-      <mesh position={[0, 1.45, 7.28]}><boxGeometry args={[2.2, 0.95, 0.06]} /><meshStandardMaterial color="#0a1a26" metalness={0.3} roughness={0.1} /></mesh>
-      {/* chassis + wheels */}
-      <mesh position={[0, 0.55, 3.7]}><boxGeometry args={[2.2, 0.3, 7.8]} /><meshStandardMaterial color="#20242a" /></mesh>
-      {[[-1.12, 1.4], [1.12, 1.4], [-1.12, 3.6], [1.12, 3.6], [-1.12, 6.2], [1.12, 6.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.38, z]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.36, 0.36, 0.26, 16]} /><meshStandardMaterial color="#15181e" /></mesh>
+      {/* ===================== TRAILER ===================== */}
+      <mesh position={[0, 1.8, 3.1]} castShadow receiveShadow><boxGeometry args={[2.6, 2.7, 5.6]} /><meshStandardMaterial color={color} metalness={0.35} roughness={0.5} /></mesh>
+      <mesh position={[0, 3.18, 3.1]}><boxGeometry args={[2.66, 0.1, 5.72]} /><meshStandardMaterial color="#e7ebf0" metalness={0.4} roughness={0.4} /></mesh>
+      {/* corrugation ribs */}
+      {Array.from({ length: 7 }).map((_, i) => { const z = 0.7 + i * 0.72; return [-1.33, 1.33].map((x, j) => (<mesh key={`${i}-${j}`} position={[x, 1.8, z]}><boxGeometry args={[0.03, 2.5, 0.1]} /><meshStandardMaterial color={color} metalness={0.4} roughness={0.45} /></mesh>)); })}
+      {/* reflective side band */}
+      {[-1.33, 1.33].map((x, i) => (<mesh key={i} position={[x, 1.15, 3.1]}><boxGeometry args={[0.02, 0.28, 5.4]} /><meshStandardMaterial color="#e6ebf2" emissive="#9fb4d0" emissiveIntensity={0.2} roughness={0.4} /></mesh>))}
+      {/* rear door frame + two doors ajar toward the dock (-z), with locking bars */}
+      <mesh position={[0, 1.8, 0.36]}><boxGeometry args={[2.64, 2.72, 0.06]} /><meshStandardMaterial color="#2b3038" metalness={0.4} roughness={0.5} /></mesh>
+      {([[-0.66, 0.38], [0.66, -0.38]] as [number, number][]).map(([dx, rot], i) => (
+        <group key={i} position={[dx, 1.8, 0.28]} rotation={[0, rot, 0]}>
+          <mesh castShadow><boxGeometry args={[1.28, 2.5, 0.08]} /><meshStandardMaterial color="#cfd3d9" metalness={0.35} roughness={0.5} /></mesh>
+          {[-0.42, 0.42].map((bx, k) => (<mesh key={k} position={[bx, 0, 0.07]}><cylinderGeometry args={[0.03, 0.03, 2.3, 8]} /><meshStandardMaterial color={chrome} metalness={0.75} roughness={0.28} /></mesh>))}
+        </group>
       ))}
+      {/* rear bumper + red tail lights */}
+      <mesh position={[0, 0.5, 0.08]}><boxGeometry args={[2.5, 0.12, 0.1]} /><meshStandardMaterial color="#20242a" metalness={0.5} roughness={0.5} /></mesh>
+      {[-1.0, 1.0].map((x, i) => (<mesh key={i} position={[x, 0.62, 0.06]}><boxGeometry args={[0.28, 0.18, 0.05]} /><meshStandardMaterial color="#e23" emissive="#ff2a2a" emissiveIntensity={1.4} toneMapped={false} /></mesh>))}
+      {/* amber marker lights along the roof edge */}
+      {[0.9, 2.7, 4.5].map((z, i) => [-1.35, 1.35].map((x, j) => (<mesh key={`${i}-${j}`} position={[x, 3.06, z]}><boxGeometry args={[0.04, 0.06, 0.12]} /><meshStandardMaterial color="#ffb02a" emissive="#ffb02a" emissiveIntensity={0.9} toneMapped={false} /></mesh>)))}
+      {/* landing gear + chassis + side skirts */}
+      {[-0.9, 0.9].map((x, i) => (<mesh key={i} position={[x, 0.38, 5.5]}><boxGeometry args={[0.12, 0.72, 0.12]} /><meshStandardMaterial color="#3a3f47" metalness={0.4} roughness={0.5} /></mesh>))}
+      <mesh position={[0, 0.5, 3.3]}><boxGeometry args={[1.4, 0.28, 5.6]} /><meshStandardMaterial color="#1c2026" metalness={0.4} roughness={0.6} /></mesh>
+      {[-1.28, 1.28].map((x, i) => (<mesh key={i} position={[x, 0.56, 3.5]}><boxGeometry args={[0.04, 0.5, 4.0]} /><meshStandardMaterial color="#2a2f36" roughness={0.6} /></mesh>))}
+
+      {/* ===================== TRACTOR ===================== */}
+      <mesh position={[0, 0.55, 7.4]}><boxGeometry args={[1.3, 0.26, 3.2]} /><meshStandardMaterial color="#1c2026" metalness={0.4} roughness={0.6} /></mesh>
+      {/* chrome fuel tanks */}
+      {[-1.2, 1.2].map((x, i) => (<mesh key={i} position={[x, 0.75, 7.1]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.34, 0.34, 1.3, 16]} /><meshStandardMaterial color={chrome} metalness={0.82} roughness={0.24} /></mesh>))}
+      {/* sleeper cab + hood */}
+      <mesh position={[0, 1.6, 8.0]} castShadow><boxGeometry args={[2.5, 2.6, 1.9]} /><meshStandardMaterial color={color} metalness={0.42} roughness={0.38} /></mesh>
+      <mesh position={[0, 1.02, 9.2]} castShadow><boxGeometry args={[2.42, 1.5, 0.95]} /><meshStandardMaterial color={color} metalness={0.42} roughness={0.38} /></mesh>
+      {/* roof aero fairing */}
+      <mesh position={[0, 3.05, 8.0]}><boxGeometry args={[2.35, 0.5, 1.7]} /><meshStandardMaterial color={color} metalness={0.4} roughness={0.4} /></mesh>
+      {/* windshield + side windows */}
+      <mesh position={[0, 2.1, 8.98]} rotation={[0.14, 0, 0]}><boxGeometry args={[2.2, 0.95, 0.05]} /><meshStandardMaterial color={glass} metalness={0.5} roughness={0.08} envMapIntensity={1.4} /></mesh>
+      {[-1.26, 1.26].map((x, i) => (<mesh key={i} position={[x, 1.95, 8.2]}><boxGeometry args={[0.04, 0.7, 1.0]} /><meshStandardMaterial color={glass} metalness={0.5} roughness={0.08} /></mesh>))}
+      {/* grille, chrome bumper, headlights */}
+      <mesh position={[0, 0.98, 9.66]}><boxGeometry args={[2.0, 1.0, 0.08]} /><meshStandardMaterial color="#1a1d22" metalness={0.6} roughness={0.4} /></mesh>
+      <mesh position={[0, 0.5, 9.72]}><boxGeometry args={[2.42, 0.3, 0.14]} /><meshStandardMaterial color={chrome} metalness={0.82} roughness={0.24} /></mesh>
+      {[-0.8, 0.8].map((x, i) => (<mesh key={i} position={[x, 0.86, 9.7]}><boxGeometry args={[0.32, 0.24, 0.06]} /><meshStandardMaterial color="#fff8e6" emissive="#fff2cc" emissiveIntensity={1.7} toneMapped={false} /></mesh>))}
+      {/* twin chrome exhaust stacks */}
+      {[-1.22, 1.22].map((x, i) => (<mesh key={i} position={[x, 2.3, 7.3]}><cylinderGeometry args={[0.1, 0.1, 2.6, 12]} /><meshStandardMaterial color={chrome} metalness={0.85} roughness={0.2} /></mesh>))}
+      {/* mirrors */}
+      {[-1.42, 1.42].map((x, i) => (<mesh key={i} position={[x, 2.2, 8.85]}><boxGeometry args={[0.06, 0.5, 0.2]} /><meshStandardMaterial color="#20242a" roughness={0.5} /></mesh>))}
+
+      {/* ===================== WHEELS (tandem trailer + tractor drive + steer) ===================== */}
+      {([1.9, 3.05] as number[]).flatMap((z) => [-1.15, 1.15].map((x) => [x, z] as [number, number])).map(([x, z], i) => <TruckWheel key={`tw${i}`} x={x} z={z} />)}
+      {([6.9, 7.95] as number[]).flatMap((z) => [-1.15, 1.15].map((x) => [x, z] as [number, number])).map(([x, z], i) => <TruckWheel key={`dw${i}`} x={x} z={z} />)}
+      {[-1.15, 1.15].map((x, i) => <TruckWheel key={`sw${i}`} x={x} z={9.35} />)}
     </group>
   );
 }
@@ -1855,10 +1916,10 @@ function TruckFill({ x, phase = 0 }: { x: number; phase?: number }) {
 }
 
 /** Orange Toyota electric tow tractor (tugger) with a seated driver. */
-function TowTractor() {
+function TowTractor({ color = "#e0561a" }: { color?: string }) {
   return (
     <group>
-      <mesh position={[0, 0.38, 0]} castShadow><boxGeometry args={[0.9, 0.5, 1.7]} /><meshStandardMaterial color="#e0561a" metalness={0.3} roughness={0.5} /></mesh>
+      <mesh position={[0, 0.38, 0]} castShadow><boxGeometry args={[0.9, 0.5, 1.7]} /><meshStandardMaterial color={color} metalness={0.3} roughness={0.5} /></mesh>
       <mesh position={[0, 0.2, 0.75]} castShadow><boxGeometry args={[0.85, 0.3, 0.3]} /><meshStandardMaterial color="#20242a" metalness={0.4} roughness={0.5} /></mesh>
       <mesh position={[0, 0.78, -0.45]} castShadow><boxGeometry args={[0.7, 0.5, 0.12]} /><meshStandardMaterial color="#2a2f36" /></mesh>
       <mesh position={[0, 0.62, 0.35]} rotation={[0.5, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 0.4, 8]} /><meshStandardMaterial color="#15181e" /></mesh>
@@ -1890,7 +1951,7 @@ function DollyCage() {
 }
 
 /** Tugger + 3 dollies indexing around a milk-run loop through the aisles. */
-function Tugger({ loop }: { loop: XZ[] }) {
+function Tugger({ loop, color }: { loop: XZ[]; color?: string }) {
   const grp = useRef<THREE.Group>(null);
   const segs = useMemo(() => {
     const s: { a: XZ; b: XZ; len: number; head: number }[] = []; let total = 0;
@@ -1901,7 +1962,7 @@ function Tugger({ loop }: { loop: XZ[] }) {
   const t = useRef(0);
   const gap = 1.7 / segs.total;
   useFrame((_, dt) => { t.current = (t.current + dt * 2.4 / segs.total) % 1; const g = grp.current; if (!g) return; g.children.forEach((ch, i) => { const p = at(t.current - i * gap); ch.position.set(p.x, 0, p.z); ch.rotation.y = -p.head + Math.PI / 2; }); });
-  return (<group ref={grp}><group><TowTractor /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group></group>);
+  return (<group ref={grp}><group><TowTractor color={color} /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group></group>);
 }
 
 /** An RF picker walking an aisle back and forth, scanner in hand. */
@@ -1920,6 +1981,31 @@ function WalkingPicker({ x, z0, z1, y = 0, phase = 0, tone }: { x: number; z0: n
     else { f = 0; mv = false; face = Math.PI; }                        // stage at aisle head
     moving.current = mv;
     if (g.current) { g.current.position.set(x, y, z0 + (z1 - z0) * f); g.current.rotation.y = face; }
+  });
+  return <group ref={g}><WarehouseWorker movingRef={moving} tone={tone} phase={phase} /></group>;
+}
+
+/** A worker walking a clean straight LANE between two floor points (a→b→a),
+ *  facing the direction of travel — keeps workers in aisles/lanes and never
+ *  weaving in between the racks. */
+function AisleWalker({ a, b, phase = 0, tone }: { a: XZ; b: XZ; phase?: number; tone?: string }) {
+  const g = useRef<THREE.Group>(null);
+  const moving = useRef(true);
+  const head = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  useFrame((st) => {
+    const period = 12;
+    const u = ((((st.clock.elapsedTime + phase * period) % period) + period) % period) / period;
+    let f: number, mv: boolean, fwd: boolean;
+    if (u < 0.06) { f = 0; mv = false; fwd = true; }
+    else if (u < 0.46) { f = (u - 0.06) / 0.40; mv = true; fwd = true; }
+    else if (u < 0.54) { f = 1; mv = false; fwd = false; }
+    else if (u < 0.94) { f = 1 - (u - 0.54) / 0.40; mv = true; fwd = false; }
+    else { f = 0; mv = false; fwd = true; }
+    moving.current = mv;
+    if (g.current) {
+      g.current.position.set(a[0] + (b[0] - a[0]) * f, 0, a[1] + (b[1] - a[1]) * f);
+      g.current.rotation.y = Math.PI / 2 - (fwd ? head : head + Math.PI);
+    }
   });
   return <group ref={g}><WarehouseWorker movingRef={moving} tone={tone} phase={phase} /></group>;
 }
@@ -2005,6 +2091,198 @@ function WarehouseActivity({ whFloor }: { whFloor: "both" | "ground" | "mezz" })
   );
 }
 
+/** A flat floor billboard label naming a warehouse zone. */
+function ZoneTag({ x, z, text, y = 0.5 }: { x: number; z: number; text: string; y?: number }) {
+  return (
+    <Html position={[x, y, z]} center distanceFactor={40} zIndexRange={[6, 0]}>
+      <div style={{ font: "600 12px/1 ui-monospace,monospace", letterSpacing: ".14em", color: "#cbd5e1", background: "rgba(12,16,22,.62)", border: "1px solid #2a323f", borderRadius: 6, padding: "5px 11px", whiteSpace: "nowrap", textTransform: "uppercase", pointerEvents: "none" }}>{text}</div>
+    </Html>
+  );
+}
+
+/** One labelled block of pallet racking (rows spaced along x, bays along z, N
+ *  levels), drawn instanced. Lays out an enlarged storage zone (R&R, D22, VH …). */
+function RackBlock({ x0, x1, z0, z1, levels = 4, label, labelZ, rowGap = 2.2 }: {
+  x0: number; x1: number; z0: number; z1: number; levels?: number; label?: string; labelZ?: number; rowGap?: number;
+}) {
+  const g = useMemo(() => {
+    const rowXs: number[] = [];
+    for (let x = x0 + 1.4; x <= x1 - 1.4 + 1e-6; x += rowGap) rowXs.push(x);
+    const len = z1 - z0, cz = (z0 + z1) / 2, bays = Math.max(3, Math.round(len / 2.4));
+    const levelYs = levels >= 4 ? [0.95, 2.15, 3.35, 4.55] : [0.95, 2.05, 3.15];
+    const uH = levels >= 4 ? 5.0 : 3.9, uY = uH / 2;
+    const up: [number, number, number][] = [], beam: [number, number, number][] = [], boxA: [number, number, number][] = [], boxB: [number, number, number][] = [];
+    rowXs.forEach((x) => {
+      for (let i = 0; i <= bays; i++) { const z = z0 + (i / bays) * len; up.push([x - 0.55, uY, z]); up.push([x + 0.55, uY, z]); }
+      levelYs.forEach((y) => { beam.push([x - 0.5, y, cz]); beam.push([x + 0.5, y, cz]); });
+      levelYs.forEach((y, li) => { for (let i = 0; i < bays; i++) { if ((i + li) % 5 === 0) continue; const z = z0 + ((i + 0.5) / bays) * len; ((i * 2 + li) % 3 === 0 ? boxB : boxA).push([x, y + 0.32, z]); } });
+    });
+    return { up, beam, boxA, boxB, len, bays, uH };
+  }, [x0, x1, z0, z1, levels, rowGap]);
+  return (
+    <group>
+      <InstancedBoxes items={g.up} args={[0.1, g.uH, 0.1]} color="#2f4d74" metalness={0.5} roughness={0.5} cast />
+      <InstancedBoxes items={g.beam} args={[0.09, 0.09, g.len]} color="#c76a18" metalness={0.35} roughness={0.55} />
+      <InstancedBoxes items={g.boxA} args={[0.95, 0.5, (g.len / g.bays) * 0.82]} color="#b98a4e" roughness={0.88} cast />{/* cardboard */}
+      <InstancedBoxes items={g.boxB} args={[0.9, 0.52, (g.len / g.bays) * 0.8]} color="#c3ced7" metalness={0.35} roughness={0.42} cast />{/* shrink-wrapped */}
+      {label && <ZoneTag x={(x0 + x1) / 2} z={labelZ ?? (z0 + z1) / 2} text={label} />}
+    </group>
+  );
+}
+
+/** A counterbalance forklift: yellow chassis + grey counterweight, overhead guard
+ *  cage, twin mast + carriage, forks, seat, steering wheel and an amber beacon. */
+function Forklift({ x, z, rot = 0 }: { x: number; z: number; rot?: number }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
+      {/* lower chassis (yellow) */}
+      <mesh position={[0, 0.32, -0.1]} castShadow><boxGeometry args={[1.12, 0.52, 1.9]} /><meshStandardMaterial color="#e3a72b" metalness={0.3} roughness={0.5} /></mesh>
+      {/* counterweight (rear, grey) */}
+      <mesh position={[0, 0.62, -0.72]} castShadow><boxGeometry args={[1.08, 0.86, 0.72]} /><meshStandardMaterial color="#c6c8cc" metalness={0.35} roughness={0.5} /></mesh>
+      {/* hood over the powertrain */}
+      <mesh position={[0, 0.92, -0.35]} castShadow><boxGeometry args={[0.92, 0.42, 0.85]} /><meshStandardMaterial color="#33383f" roughness={0.6} /></mesh>
+      {/* seat + backrest */}
+      <mesh position={[0, 1.16, -0.42]}><boxGeometry args={[0.48, 0.1, 0.46]} /><meshStandardMaterial color="#17191d" roughness={0.7} /></mesh>
+      <mesh position={[0, 1.4, -0.64]}><boxGeometry args={[0.48, 0.44, 0.1]} /><meshStandardMaterial color="#17191d" roughness={0.7} /></mesh>
+      {/* steering column + wheel */}
+      <mesh position={[0, 1.2, 0.05]} rotation={[0.5, 0, 0]}><cylinderGeometry args={[0.025, 0.025, 0.5, 8]} /><meshStandardMaterial color="#22262c" /></mesh>
+      <mesh position={[0, 1.4, 0.18]} rotation={[Math.PI / 2.3, 0, 0]}><torusGeometry args={[0.12, 0.02, 8, 18]} /><meshStandardMaterial color="#111417" /></mesh>
+      {/* overhead guard cage: 4 posts + roof */}
+      {([[-0.52, -0.78], [0.52, -0.78], [-0.52, 0.32], [0.52, 0.32]] as [number, number][]).map(([px, pz], i) => (
+        <mesh key={i} position={[px, 1.62, pz]}><boxGeometry args={[0.06, 1.5, 0.06]} /><meshStandardMaterial color="#22262c" metalness={0.5} roughness={0.4} /></mesh>
+      ))}
+      <mesh position={[0, 2.38, -0.23]} castShadow><boxGeometry args={[1.1, 0.07, 1.25]} /><meshStandardMaterial color="#22262c" metalness={0.5} roughness={0.4} /></mesh>
+      {/* amber beacon */}
+      <mesh position={[0.42, 2.48, -0.23]}><sphereGeometry args={[0.06, 10, 8]} /><meshStandardMaterial color="#ffb02a" emissive="#ffb02a" emissiveIntensity={1.6} toneMapped={false} /></mesh>
+      {/* twin mast + carriage at the front */}
+      {[-0.33, 0.33].map((mx, i) => (<mesh key={i} position={[mx, 1.5, 0.92]} castShadow><boxGeometry args={[0.1, 3.0, 0.12]} /><meshStandardMaterial color="#20242a" metalness={0.55} roughness={0.4} /></mesh>))}
+      <mesh position={[0, 0.85, 0.86]}><boxGeometry args={[0.78, 0.5, 0.08]} /><meshStandardMaterial color="#2a2f36" metalness={0.4} roughness={0.5} /></mesh>
+      {/* forks */}
+      {[-0.27, 0.27].map((fx, i) => (<mesh key={i} position={[fx, 0.12, 1.5]} castShadow><boxGeometry args={[0.12, 0.06, 1.1]} /><meshStandardMaterial color="#31363d" metalness={0.55} roughness={0.4} /></mesh>))}
+      {/* wheels — front (drive, larger) + rear (steer) */}
+      {([[-0.56, 0.5, 0.32], [0.56, 0.5, 0.32], [-0.5, -0.72, 0.26], [0.5, -0.72, 0.26]] as [number, number, number][]).map(([wx, wz, r], i) => (
+        <mesh key={i} position={[wx, r, wz]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[r, r, 0.2, 16]} /><meshStandardMaterial color="#14171c" roughness={0.75} /></mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A yellow floor-tape loading-bay outline (like the taped truck bays on-site). */
+function YellowBay({ x, z, w = 4, d = 3.4 }: { x: number; z: number; w?: number; d?: number }) {
+  const t = 0.12;
+  return (
+    <group position={[x, 0.03, z]}>
+      {[-d / 2, d / 2].map((oz, i) => (<mesh key={`h${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, oz]}><planeGeometry args={[w, t]} /><meshBasicMaterial color="#e8b21c" /></mesh>))}
+      {[-w / 2, w / 2].map((ox, i) => (<mesh key={`v${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[ox, 0, 0]}><planeGeometry args={[t, d]} /><meshBasicMaterial color="#e8b21c" /></mesh>))}
+    </group>
+  );
+}
+
+/** A forklift working an aisle: drives in, lifts/places a pallet, drives out. */
+function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: number; phase?: number }) {
+  const g = useRef<THREE.Group>(null);
+  const lift = useRef<THREE.Group>(null);
+  useFrame((st) => {
+    const period = 13;
+    const u = ((((st.clock.elapsedTime + phase * period) % period) + period) % period) / period;
+    let z: number, face: number, liftY = 0.32, load = true;
+    if (u < 0.42) { z = z0 + (z1 - z0) * (u / 0.42); face = Math.PI; }                            // drive into the aisle (-z), forks low
+    else if (u < 0.50) { z = z1; face = Math.PI; liftY = 0.32 + ((u - 0.42) / 0.08) * 2.6; }      // raise the load up the mast
+    else if (u < 0.56) { z = z1; face = Math.PI; liftY = 2.9; }                                   // place into the rack
+    else if (u < 0.62) { z = z1; face = Math.PI; load = false; }                                  // released — pull empty forks back
+    else if (u < 0.98) { z = z1 + (z0 - z1) * ((u - 0.62) / 0.36); face = 0; load = false; }      // drive back out empty
+    else { z = z0; face = 0; load = false; }
+    if (g.current) { g.current.position.set(x, 0, z); g.current.rotation.y = face; }
+    if (lift.current) { lift.current.position.y = liftY; lift.current.visible = load; }
+  });
+  return (
+    <group ref={g}>
+      <Forklift x={0} z={0} />
+      {/* pallet + box that ride UP the mast and get placed into the rack */}
+      <group ref={lift}>
+        <mesh position={[0, 0, 1.5]} castShadow><boxGeometry args={[0.9, 0.14, 1.0]} /><meshStandardMaterial color="#8a6a3f" roughness={0.85} /></mesh>
+        <mesh position={[0, 0.42, 1.5]} castShadow><boxGeometry args={[0.82, 0.6, 0.85]} /><meshStandardMaterial color="#c2d0da" metalness={0.35} roughness={0.42} /></mesh>
+      </group>
+    </group>
+  );
+}
+
+/** The ENLARGED remaining warehouse — built now, SEPARATE from the previously-built
+ *  mezzanine section (which is untouched). The whole hall runs as ONE line of
+ *  full-depth 4-level storage zones (R&R, D22, VH, Hyundai, SSP), structural
+ *  PILLARS on a grid like the old section, the perimeter ROAD running BEHIND the
+ *  racks (yellow barricades both sides), receiving/shipping zones and a canopy of
+ *  truck docks in front, plus live workers + 2 working vehicles. Single-floor
+ *  ground storage → hidden in the Mezzanine-only view. */
+function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }) {
+  if (whFloor === "mezz") return null;
+  const zBack = -24, zFront = 4;                  // SAME depth as the old mezzanine section → one tight continuous line
+  const zones: [number, number, string][] = [     // x0, x1, label — abutting the old section, no gap
+    [-33, -22, "R & R Storage"],
+    [-46, -35, "D22 Storage"],
+    [-59, -48, "VH Storage"],
+    [-72, -61, "Hyundai Storage"],
+    [-85, -74, "SSP Storage"],
+  ];
+  // ROAD running BEHIND the racks (perimeter road), spanning the whole line incl. the old section
+  const roadZ0 = -32, roadZ1 = -26, roadX0 = -88, roadX1 = 14, roadW = roadX1 - roadX0, roadCx = (roadX0 + roadX1) / 2, roadCz = (roadZ0 + roadZ1) / 2;
+  const posts: [number, number, number][] = [];
+  for (let x = roadX0 + 1; x <= roadX1 - 1; x += 3.5) { posts.push([x, 0.5, roadZ0]); posts.push([x, 0.5, roadZ1]); }
+  // structural pillars on a grid (blue-grey, floor-to-roof), like the old section
+  const pillars: [number, number, number][] = [];
+  for (let px = -84; px <= -20; px += 12) for (let pz = -22; pz <= 18; pz += 10) pillars.push([px, 4, pz]);
+  const dockXs = [-30, -48, -66, -82];
+  return (
+    <group>
+      {/* ===== one continuous line of full-depth 4-level storage zones ===== */}
+      {zones.map(([x0, x1, label], i) => (
+        <RackBlock key={i} x0={x0} x1={x1} z0={zBack} z1={zFront} label={label} labelZ={zFront + 2} />
+      ))}
+
+      {/* ===== structural pillars on a grid (floor → roof) ===== */}
+      <InstancedBoxes items={pillars} args={[0.5, 8, 0.5]} color="#3f5170" metalness={0.4} roughness={0.6} cast />
+      <InstancedBoxes items={pillars.map((p) => [p[0], 8.1, p[2]] as [number, number, number])} args={[0.9, 0.2, 0.9]} color="#2b3a52" metalness={0.4} roughness={0.6} />
+
+      {/* ===== perimeter ROAD running BEHIND the racks + yellow barricades ===== */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[roadCx, 0.02, roadCz]} receiveShadow><planeGeometry args={[roadW, roadZ1 - roadZ0]} /><meshStandardMaterial color="#39404a" roughness={0.92} /></mesh>
+      {Array.from({ length: Math.floor(roadW / 6) }).map((_, i) => (<mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[roadX0 + 3 + i * 6, 0.03, roadCz]}><planeGeometry args={[2, 0.18]} /><meshBasicMaterial color="#caa63a" /></mesh>))}
+      <InstancedBoxes items={posts} args={[0.12, 1.0, 0.12]} color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} />
+      {[roadZ0, roadZ1].map((z, e) => [0.42, 0.82].map((y, k) => (<mesh key={`${e}-${k}`} position={[roadCx, y, z]}><boxGeometry args={[roadW, 0.09, 0.09]} /><meshStandardMaterial color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} roughness={0.5} /></mesh>)))}
+      <ZoneTag x={roadCx} z={roadCz - 2.4} text="Road" />
+
+      {/* ===== receiving / shipping / operation zones along the dock edge (front) ===== */}
+      <ZoneTag x={-30} z={11} text="Depot Shipping" />
+      <ZoneTag x={-52} z={11} text="D22 Unloading & Receiving" />
+      <ZoneTag x={-74} z={11} text="Local Receiving" />
+      {[-34, -52, -70].map((x, i) => (<group key={i} position={[x, 0, 10]}><DollyCage /></group>))}
+
+      {/* ===== canopy + truck docks over the frontage ===== */}
+      <mesh position={[-51, 5.4, 24]} castShadow><boxGeometry args={[70, 0.3, 10]} /><meshStandardMaterial color="#8a9098" metalness={0.3} roughness={0.7} /></mesh>
+      {dockXs.map((x, i) => (
+        <group key={i} position={[x, 0, 22]}>
+          {[-1.9, 1.9].map((dx, j) => (<mesh key={j} position={[dx, 1.6, 0]}><boxGeometry args={[0.2, 3.2, 0.2]} /><meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} /></mesh>))}
+          <mesh position={[0, 3.3, 0]}><boxGeometry args={[4.2, 0.25, 0.25]} /><meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} /></mesh>
+          <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a"][i % 4]} />
+          <YellowBay x={0} z={-5} />
+        </group>
+      ))}
+
+      {/* ===== live workers walk CLEAN LANES in front of the racks + shipping (never into the racks) ===== */}
+      <AisleWalker a={[-82, 6]} b={[-24, 6]} phase={0} tone={SKIN[0]} />
+      <AisleWalker a={[-24, 8.5]} b={[-82, 8.5]} phase={0.45} tone={SKIN[1]} />
+      <AisleWalker a={[-48, 6]} b={[-48, 13]} phase={0.7} tone={SKIN[2]} />
+      {/* a couple of workers at the receiving zones */}
+      {([[-30, 14], [-74, 14]] as [number, number][]).map(([x, z], i) => (
+        <group key={`rw${i}`} position={[x + 1.4, 0, z]} rotation={[0, -Math.PI / 2, 0]}><WarehouseWorker tone={SKIN[(i + 1) % SKIN.length]} phase={i * 0.7} vest="#e8a12a" /></group>
+      ))}
+
+      {/* ===== 2 working vehicles: a green Toyota tugger milk-run + a forklift ===== */}
+      <Tugger loop={[[-26, 7], [-84, 7], [-84, -1], [-26, -1]]} color="#7f9769" />
+      <WorkingForklift x={-40} z0={2} z1={-22} phase={0.2} />
+    </group>
+  );
+}
+
 function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate, product, engineSupply, whFloor = "both" }: {
   stations: StationLive[]; selected: string | null; onSelect: (s: string) => void;
   bottleneck?: string | null; kpi: Record<string, StationKpi>; layout: Layout; flowRate: number;
@@ -2063,8 +2341,12 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
   // bounds → ground / aisle / crane framing
   const xs = Object.values(pos).map((p) => p[0]);
   const zs = Object.values(pos).map((p) => p[1]);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  let minX = Math.min(...xs), maxX = Math.max(...xs);
+  let minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  // the warehouse floor is far bigger than its station markers — size the ground,
+  // roof trusses, high-bay lights and perimeter columns to the whole building so
+  // the new storage hall gets a real floor + ceiling instead of floating on the bg.
+  if (product === "warehouse") { minX = -90; maxX = 16; minZ = -34; maxZ = 26; }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const gw = (maxX - minX) + 12, gd = (maxZ - minZ) + 12;
   // central-corridor rectangle for the AGV loop (between the two bays)
@@ -2103,18 +2385,21 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
           (no full mirror re-render, so it stays fast on big scenes) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0, cz]} receiveShadow>
         <planeGeometry args={[gw, gd]} />
-        <meshStandardMaterial color="#a7acb3" metalness={0.05} roughness={0.9} envMapIntensity={0.5} />
+        <meshStandardMaterial color={product === "warehouse" ? "#35594a" : "#a7acb3"} metalness={product === "warehouse" ? 0.12 : 0.05} roughness={product === "warehouse" ? 0.5 : 0.9} envMapIntensity={product === "warehouse" ? 0.9 : 0.5} />
       </mesh>
       <gridHelper args={[Math.max(gw, gd), Math.round(Math.max(gw, gd) / 2), "#8b919b", "#b7bcc3"]}
         position={[cx, 0.015, cz]} />
 
       {/* overhead: high-bay LED fixtures, roof trusses, structural steel columns */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const c = i % 4, r = Math.floor(i / 4);
-        const x = (minX - 2) + ((c + 0.5) / 4) * ((maxX + 2) - (minX - 2));
-        const z = (minZ - 2) + ((r + 0.5) / 2) * ((maxZ + 2) - (minZ - 2));
-        return <HighBay key={`hb${i}`} x={x} z={z} y={6.9} />;
-      })}
+      {(() => {
+        const cols = product === "warehouse" ? 9 : 4, rows = product === "warehouse" ? 4 : 2;
+        return Array.from({ length: cols * rows }).map((_, i) => {
+          const c = i % cols, r = Math.floor(i / cols);
+          const x = (minX - 2) + ((c + 0.5) / cols) * ((maxX + 2) - (minX - 2));
+          const z = (minZ - 2) + ((r + 0.5) / rows) * ((maxZ + 2) - (minZ - 2));
+          return <HighBay key={`hb${i}`} x={x} z={z} y={6.9} />;
+        });
+      })()}
       <RoofTrusses x0={minX - 4} x1={maxX + 4} z0={minZ - 4} z1={maxZ + 4} y={7.5} />
       {Array.from({ length: 8 }).map((_, i) => {
         const z = i < 4 ? minZ - 4 : maxZ + 4;
@@ -2127,6 +2412,8 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
       {product !== "warehouse" && <GantryCrane x0={minX - 1} x1={maxX + 1} z0={minZ - 1.5} z1={maxZ + 1.5} />}
       {product === "warehouse" && <WarehouseBuild whFloor={whFloor} />}
       {product === "warehouse" && <WarehouseActivity whFloor={whFloor} />}
+      {/* the NEW remaining warehouse (R&R / D22 / VH / Hyundai / SSP / PMSP + road) */}
+      {product === "warehouse" && <WarehouseExtension whFloor={whFloor} />}
 
       {/* overhead power-and-free carrier line — engines hang and index station to
           station (no ground conveyor). Built from the flow order + per-station stage. */}
@@ -2272,13 +2559,16 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
     const isWh = product === "warehouse";
     const footprint = Math.max(maxX - minX, maxZ - minZ, 14);
     if (isWh) {
-      // The live action the operator watches is the shipping END — goods lifts,
-      // staging conveyors, packing and the truck docks. Frame from the pick aisles
-      // looking TOWARD the docks (the trucks' open rears face the camera), instead
-      // of looking down onto the racking from the dock side.
-      const czT = 15;                       // orbit target: the pack / dock band
-      const d = footprint * 0.5 + 12;
-      return { position: [cx + d * 0.30, d * 0.42, czT - d * 0.5] as [number, number, number], cx, cz: czT, ty: 1.6 };
+      // The warehouse now spans the previously-built mezzanine section (x≈-20..15)
+      // PLUS the new storage extension (x≈-76..-20). Frame the whole building from
+      // that combined footprint — an elevated 3/4 overview looking toward the docks.
+      const minX = -90, maxX = 16, minZ = -34, maxZ = 26;
+      const wcx = (minX + maxX) / 2;
+      const fp = Math.max(maxX - minX, maxZ - minZ, 20);
+      const czT = -6;                       // orbit target: mid-building
+      const d = fp * 0.44 + 12;
+      // look from the DOCK side back across the whole (now compact) depth.
+      return { position: [wcx + d * 0.34, d * 0.55, czT + d * 0.62] as [number, number, number], cx: wcx, cz: czT, ty: 1.8 };
     }
     const dist = footprint * 0.8 + 8;
     // 3/4 corner overview — close enough that the hero workpieces (car bodies) read
