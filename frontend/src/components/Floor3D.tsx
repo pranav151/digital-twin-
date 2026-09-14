@@ -1687,13 +1687,13 @@ function WarehouseWorker({ walking = false, movingRef, tone = SKIN[0], phase = 0
   const legL = useRef<THREE.Group>(null), legR = useRef<THREE.Group>(null), arm = useRef<THREE.Group>(null), armL = useRef<THREE.Group>(null), body = useRef<THREE.Group>(null);
   useFrame((st) => {
     const w = movingRef ? movingRef.current : walking;
-    const t = st.clock.elapsedTime * 4.6 + phase;
-    const s = w ? Math.sin(t) * 0.5 : 0;
+    const t = st.clock.elapsedTime * 2.2 + phase;
+    const s = w ? Math.sin(t) * 0.42 : 0;
     if (legL.current) legL.current.rotation.x = s;
     if (legR.current) legR.current.rotation.x = -s;
-    if (armL.current) armL.current.rotation.x = w ? -s * 0.95 : -0.1;
-    if (body.current) { body.current.position.y = w ? Math.abs(Math.sin(t)) * 0.03 : 0; body.current.rotation.x = w ? 0.05 : 0; }
-    if (arm.current) arm.current.rotation.x = -1.05 + Math.sin(st.clock.elapsedTime * 2.2 + phase) * (w ? 0.06 : 0.2);
+    if (armL.current) armL.current.rotation.x = w ? -s * 0.85 : -0.08;
+    if (body.current) { body.current.position.y = w ? Math.abs(Math.sin(t)) * 0.02 : 0; body.current.rotation.x = w ? 0.03 : 0; }
+    if (arm.current) arm.current.rotation.x = -1.05 + Math.sin(st.clock.elapsedTime * 1.1 + phase) * (w ? 0.04 : 0.14);
   });
   return (
     <group>
@@ -1878,7 +1878,7 @@ function DockLoader({ x, phase = 0 }: { x: number; phase?: number }) {
   const worker = useRef<THREE.Group>(null);
   const dolly = useRef<THREE.Group>(null);
   const z0 = 16.6, z1 = 21.2;              // conveyor end → truck rear opening
-  const period = 8;
+  const period = 15;
   useFrame((st) => {
     const u = ((((st.clock.elapsedTime + phase * period) % period) + period) % period) / period;
     let wz: number, face: number, pushing: boolean;
@@ -1965,7 +1965,7 @@ function Tugger({ loop, color }: { loop: XZ[]; color?: string }) {
   const at = (u: number) => { let d = ((u % 1) + 1) % 1 * segs.total; for (const sg of segs.s) { if (d <= sg.len) { const f = sg.len ? d / sg.len : 0; return { x: sg.a[0] + (sg.b[0] - sg.a[0]) * f, z: sg.a[1] + (sg.b[1] - sg.a[1]) * f, head: sg.head }; } d -= sg.len; } const l = segs.s[segs.s.length - 1]; return { x: l.b[0], z: l.b[1], head: l.head }; };
   const t = useRef(0);
   const gap = 1.7 / segs.total;
-  useFrame((_, dt) => { t.current = (t.current + dt * 2.4 / segs.total) % 1; const g = grp.current; if (!g) return; g.children.forEach((ch, i) => { const p = at(t.current - i * gap); ch.position.set(p.x, 0, p.z); ch.rotation.y = -p.head + Math.PI / 2; }); });
+  useFrame((_, dt) => { t.current = (t.current + dt * 1.5 / segs.total) % 1; const g = grp.current; if (!g) return; g.children.forEach((ch, i) => { const p = at(t.current - i * gap); ch.position.set(p.x, 0, p.z); ch.rotation.y = -p.head + Math.PI / 2; }); });
   return (<group ref={grp}><group><TowTractor color={color} /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group><group><DollyCage /></group></group>);
 }
 
@@ -1976,7 +1976,7 @@ function WalkingPicker({ x, z0, z1, y = 0, phase = 0, tone }: { x: number; z0: n
   const g = useRef<THREE.Group>(null);
   const moving = useRef(true);
   useFrame((st) => {
-    const period = 9;
+    const period = 18;
     const u = (((st.clock.elapsedTime + phase * 4) % period) + period) % period / period; // 0..1
     let f: number, mv: boolean, face: number;
     if (u < 0.38) { f = u / 0.38; mv = true; face = 0; }               // walk toward the bin (+z)
@@ -1997,7 +1997,7 @@ function AisleWalker({ a, b, phase = 0, tone }: { a: XZ; b: XZ; phase?: number; 
   const moving = useRef(true);
   const head = Math.atan2(b[1] - a[1], b[0] - a[0]);
   useFrame((st) => {
-    const period = 12;
+    const period = 26;
     const u = ((((st.clock.elapsedTime + phase * period) % period) + period) % period) / period;
     let f: number, mv: boolean, fwd: boolean;
     if (u < 0.06) { f = 0; mv = false; fwd = true; }
@@ -2014,13 +2014,65 @@ function AisleWalker({ a, b, phase = 0, tone }: { a: XZ; b: XZ; phase?: number; 
   return <group ref={g}><WarehouseWorker movingRef={moving} tone={tone} phase={phase} /></group>;
 }
 
-/** Boxes riding a staging conveyor toward the docks. */
+/** Industrial tote box for inbound material receiving. */
+function InboundTote({ color = "#1d4ed8" }: { color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.16, 0]}>
+        <boxGeometry args={[0.66, 0.32, 0.66]} />
+        <meshStandardMaterial color={color} roughness={0.65} metalness={0.15} />
+      </mesh>
+      <mesh position={[0, 0.31, 0]}>
+        <boxGeometry args={[0.7, 0.04, 0.7]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.18, 0.332]}>
+        <planeGeometry args={[0.24, 0.14]} />
+        <meshBasicMaterial color="#f8fafc" />
+      </mesh>
+      <mesh position={[-0.08, 0.22, 0]}>
+        <boxGeometry args={[0.26, 0.16, 0.36]} />
+        <meshStandardMaterial color="#94a3b8" metalness={0.65} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.13, 0.24, 0.06]}>
+        <cylinderGeometry args={[0.07, 0.07, 0.22, 10]} />
+        <meshStandardMaterial color="#cbd5e1" metalness={0.75} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sealed corrugated shipping carton for outbound sending. */
+function OutboundCarton({ type = 0 }: { type?: number }) {
+  const c = type % 2 === 0 ? "#bb8d54" : "#b08449";
+  return (
+    <group>
+      <mesh position={[0, 0.22, 0]}>
+        <boxGeometry args={[0.7, 0.44, 0.7]} />
+        <meshStandardMaterial color={c} roughness={0.88} />
+      </mesh>
+      <mesh position={[0, 0.442, 0]}>
+        <boxGeometry args={[0.11, 0.005, 0.71]} />
+        <meshStandardMaterial color="#8b5e28" roughness={0.65} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.15, 0.444, 0.12]}>
+        <planeGeometry args={[0.22, 0.26]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, 0.24, 0.352]}>
+        <planeGeometry args={[0.16, 0.12]} />
+        <meshBasicMaterial color="#dc2626" />
+      </mesh>
+    </group>
+  );
+}
+
 /** An open shipping box riding a staging conveyor, packed with mixed small +
  *  large parts (the consolidated order heading to the truck). */
 function PackedBox() {
   return (
     <group>
-      <mesh castShadow><boxGeometry args={[0.72, 0.5, 0.72]} /><meshStandardMaterial color="#bb8d54" roughness={0.85} /></mesh>
+      <mesh><boxGeometry args={[0.72, 0.5, 0.72]} /><meshStandardMaterial color="#bb8d54" roughness={0.85} /></mesh>
       {/* open flaps */}
       {[[-0.36, 0.35], [0.36, -0.35]].map(([x, r], i) => (<mesh key={i} position={[x, 0.27, 0]} rotation={[0, 0, r]}><boxGeometry args={[0.06, 0.34, 0.72]} /><meshStandardMaterial color="#c69a5e" roughness={0.8} /></mesh>))}
       {/* contents — mixed parts poking out */}
@@ -2030,10 +2082,25 @@ function PackedBox() {
     </group>
   );
 }
-function ConveyorBoxes({ x }: { x: number }) {
+function ConveyorBoxes({ x, mode = "sending" }: { x: number; mode?: "receiving" | "sending" }) {
   const g = useRef<THREE.Group>(null); const N = 3;
-  useFrame((st) => { if (!g.current) return; g.current.children.forEach((ch, i) => { const u = ((st.clock.elapsedTime * 0.08) + i / N) % 1; ch.position.set(x, 0.62, 8 + (15.5 - 8) * u); }); });
-  return <group ref={g}>{Array.from({ length: N }).map((_, i) => (<group key={i}><PackedBox /></group>))}</group>;
+  useFrame((st) => {
+    if (!g.current) return;
+    g.current.children.forEach((ch, i) => {
+      const u = ((st.clock.elapsedTime * 0.045) + i / N) % 1;
+      const z = mode === "receiving" ? 15.5 - (15.5 - 8) * u : 8 + (15.5 - 8) * u;
+      ch.position.set(x, 0.62, z);
+    });
+  });
+  return (
+    <group ref={g}>
+      {Array.from({ length: N }).map((_, i) => (
+        <group key={i}>
+          {mode === "receiving" ? (i % 2 === 0 ? <InboundTote color="#2563eb" /> : <InboundTote color="#059669" />) : <PackedBox />}
+        </group>
+      ))}
+    </group>
+  );
 }
 
 /** A big HVLS ceiling fan slowly turning. */
@@ -2087,8 +2154,10 @@ function WarehouseActivity({ whFloor }: { whFloor: "both" | "ground" | "mezz" })
       {docks.map((x, i) => (<DockLoader key={`dl${i}`} x={x} phase={i * 0.33} />))}
       {/* each truck filling up with boxes as it is loaded */}
       {docks.map((x, i) => (<TruckFill key={`tf${i}`} x={x} phase={i / 3} />))}
-      {/* boxes on the three staging conveyors */}
-      {[-9, 0, 9].map((x, i) => (<ConveyorBoxes key={`cb${i}`} x={x} />))}
+      {/* boxes on the three staging conveyors: receiving at -9, sending at 0 and 9 */}
+      <ConveyorBoxes key="cb-rec" x={-9} mode="receiving" />
+      <ConveyorBoxes key="cb-send1" x={0} mode="sending" />
+      <ConveyorBoxes key="cb-send2" x={9} mode="sending" />
       {/* HVLS fans overhead */}
       {([[-10, -14], [8, -14], [0, 2]] as [number, number][]).map(([x, z], i) => (<HVLSFan key={`fan${i}`} x={x} z={z} />))}
     </group>
@@ -2125,10 +2194,10 @@ function RackBlock({ x0, x1, z0, z1, levels = 4, label, labelZ, rowGap = 2.2 }: 
   }, [x0, x1, z0, z1, levels, rowGap]);
   return (
     <group>
-      <InstancedBoxes items={g.up} args={[0.1, g.uH, 0.1]} color="#2f4d74" metalness={0.5} roughness={0.5} cast />
+      <InstancedBoxes items={g.up} args={[0.1, g.uH, 0.1]} color="#2f4d74" metalness={0.5} roughness={0.5} />
       <InstancedBoxes items={g.beam} args={[0.09, 0.09, g.len]} color="#c76a18" metalness={0.35} roughness={0.55} />
-      <InstancedBoxes items={g.boxA} args={[0.95, 0.5, (g.len / g.bays) * 0.82]} color="#b98a4e" roughness={0.88} cast />{/* cardboard */}
-      <InstancedBoxes items={g.boxB} args={[0.9, 0.52, (g.len / g.bays) * 0.8]} color="#c3ced7" metalness={0.35} roughness={0.42} cast />{/* shrink-wrapped */}
+      <InstancedBoxes items={g.boxA} args={[0.95, 0.5, (g.len / g.bays) * 0.82]} color="#b98a4e" roughness={0.88} />{/* cardboard */}
+      <InstancedBoxes items={g.boxB} args={[0.9, 0.52, (g.len / g.bays) * 0.8]} color="#c3ced7" metalness={0.35} roughness={0.42} />{/* shrink-wrapped */}
       {label && <ZoneTag x={(x0 + x1) / 2} z={labelZ ?? (z0 + z1) / 2} text={label} />}
     </group>
   );
@@ -2187,7 +2256,7 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
   const g = useRef<THREE.Group>(null);
   const lift = useRef<THREE.Group>(null);
   useFrame((st) => {
-    const period = 13;
+    const period = 18;
     const u = ((((st.clock.elapsedTime + phase * period) % period) + period) % period) / period;
     let z: number, face: number, liftY = 0.32, load = true;
     if (u < 0.42) { z = z0 + (z1 - z0) * (u / 0.42); face = Math.PI; }                            // drive into the aisle (-z), forks low
@@ -2226,42 +2295,117 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
 // Truck docks: Z = 22 (open bays, no canopy)
 // ============================================================
 
-/** Staging conveyor — a flat belt with a scanner arch at the exit end. */
-function StagingConveyor({ x, z0, z1 }: { x: number; z0: number; z1: number }) {
+/** Animated boxes riding the NPCC staging conveyors (receiving or sending). */
+function StagingConveyorBoxes({ x, z0, z1, mode }: {
+  x: number; z0: number; z1: number; mode: "receiving" | "sending";
+}) {
+  const g = useRef<THREE.Group>(null);
+  const N = 4;
+  const len = z1 - z0;
+  useFrame((st) => {
+    if (!g.current) return;
+    const speed = 0.045; // calm, steady logistics speed
+    g.current.children.forEach((ch, i) => {
+      const u = ((st.clock.elapsedTime * speed) + i / N) % 1;
+      // receiving: incoming from dock end (z1) inward toward storage/gangway (z0)
+      // sending: outbound from packing/staging (z0) forward toward dock end (z1)
+      const z = mode === "receiving"
+        ? (z1 - 0.7) - u * (len - 1.4)
+        : (z0 + 0.7) + u * (len - 1.4);
+      ch.position.set(x, 0.48, z);
+    });
+  });
+  return (
+    <group ref={g}>
+      {Array.from({ length: N }).map((_, i) => (
+        <group key={i}>
+          {mode === "receiving" ? (
+            i % 2 === 0 ? <InboundTote color="#2563eb" /> : <InboundTote color="#059669" />
+          ) : (
+            <OutboundCarton type={i} />
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Staging conveyor — with active material flow (receiving vs sending), scanner portal, and flow indicators. */
+function StagingConveyor({ x, z0, z1, mode = "sending" }: {
+  x: number; z0: number; z1: number; mode?: "receiving" | "sending";
+}) {
   const len = z1 - z0, cz = (z0 + z1) / 2;
+  const isRec = mode === "receiving";
+  const archZ = isRec ? z1 - 1.4 : z1 - 1.0;
+  const laserColor = isRec ? "#00f0ff" : "#ff2a2a";
+
   return (
     <group>
       {/* belt surface */}
-      <mesh position={[x, 0.46, cz]} castShadow>
-        <boxGeometry args={[0.9, 0.08, len]} />
-        <meshStandardMaterial color="#2a2f36" metalness={0.4} roughness={0.55} />
+      <mesh position={[x, 0.46, cz]}>
+        <boxGeometry args={[0.92, 0.08, len]} />
+        <meshStandardMaterial color="#1e2329" metalness={0.4} roughness={0.65} />
       </mesh>
-      {/* side rails */}
+      {/* side guide rails */}
       {[-0.48, 0.48].map((dx, i) => (
-        <mesh key={i} position={[x + dx, 0.52, cz]}>
-          <boxGeometry args={[0.06, 0.18, len]} />
+        <mesh key={i} position={[x + dx, 0.53, cz]}>
+          <boxGeometry args={[0.05, 0.18, len]} />
           <meshStandardMaterial color="#3a4050" metalness={0.5} roughness={0.5} />
         </mesh>
       ))}
-      {/* legs every 2m */}
-      {Array.from({ length: Math.max(2, Math.round(len / 2)) }).map((_, i) => {
-        const lz = z0 + ((i + 0.5) / Math.max(2, Math.round(len / 2))) * len;
+      {/* directional LED strip along side rails */}
+      {[-0.49, 0.49].map((dx, i) => (
+        <mesh key={`led-${i}`} position={[x + dx, 0.58, cz]}>
+          <boxGeometry args={[0.015, 0.02, len - 0.4]} />
+          <meshStandardMaterial
+            color={laserColor}
+            emissive={laserColor}
+            emissiveIntensity={1.2}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {/* support legs every 2m */}
+      {Array.from({ length: Math.max(2, Math.round(len / 2.2)) }).map((_, i) => {
+        const lz = z0 + ((i + 0.5) / Math.max(2, Math.round(len / 2.2))) * len;
         return (
-          <mesh key={i} position={[x, 0.24, lz]}>
-            <boxGeometry args={[0.8, 0.48, 0.06]} />
-            <meshStandardMaterial color="#3a4050" metalness={0.4} roughness={0.6} />
+          <mesh key={i} position={[x, 0.23, lz]}>
+            <boxGeometry args={[0.82, 0.46, 0.06]} />
+            <meshStandardMaterial color="#333a46" metalness={0.4} roughness={0.6} />
           </mesh>
         );
       })}
-      {/* barcode scanner arch at exit end */}
-      <mesh position={[x - 0.7, 0.9, z1 - 0.6]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
-      <mesh position={[x + 0.7, 0.9, z1 - 0.6]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
-      <mesh position={[x, 1.64, z1 - 0.6]}><boxGeometry args={[1.5, 0.07, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
+
+      {/* barcode scanner portal arch */}
+      <mesh position={[x - 0.65, 0.9, archZ]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#1f2329" /></mesh>
+      <mesh position={[x + 0.65, 0.9, archZ]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#1f2329" /></mesh>
+      <mesh position={[x, 1.62, archZ]}><boxGeometry args={[1.4, 0.07, 0.07]} /><meshStandardMaterial color="#1f2329" /></mesh>
       {/* scanner laser line */}
-      <mesh position={[x, 1.1, z1 - 0.6]}>
-        <boxGeometry args={[1.0, 0.02, 0.02]} />
-        <meshStandardMaterial color="#ff2a2a" emissive="#ff2a2a" emissiveIntensity={2.0} toneMapped={false} />
+      <mesh position={[x, 1.05, archZ]}>
+        <boxGeometry args={[0.96, 0.018, 0.018]} />
+        <meshStandardMaterial color={laserColor} emissive={laserColor} emissiveIntensity={2.4} toneMapped={false} />
       </mesh>
+      {/* scanner portal sign badge */}
+      <mesh position={[x, 1.82, archZ]}>
+        <boxGeometry args={[1.05, 0.24, 0.04]} />
+        <meshStandardMaterial color={isRec ? "#064e3b" : "#7c2d12"} roughness={0.5} />
+      </mesh>
+      <Html position={[x, 1.82, archZ]} center distanceFactor={35} zIndexRange={[5, 0]}>
+        <div style={{
+          font: "700 9px/1 ui-monospace,monospace",
+          letterSpacing: ".1em",
+          color: isRec ? "#6ee7b7" : "#fdba74",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          textTransform: "uppercase",
+          textShadow: `0 0 6px ${isRec ? "rgba(16,185,129,0.8)" : "rgba(249,115,22,0.8)"}`,
+        }}>
+          {isRec ? "INBOUND · RECEIVING ↓" : "OUTBOUND · SENDING ↑"}
+        </div>
+      </Html>
+
+      {/* active moving material boxes */}
+      <StagingConveyorBoxes x={x} z0={z0} z1={z1} mode={mode} />
     </group>
   );
 }
@@ -2318,8 +2462,6 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
     for (let pz = zBackWall + 2; pz <= zStagingFront; pz += 12)
       pillars.push([px, 4.0, pz]);
 
-  // ── Staging conveyors (in D22 Primary unloading area) ─────────────────────
-  const conveyorXs = [-52, -60];
 
   // ── Docks along front ────────────────────────────────────────────────────
   const dockXs = [-28, -56, -78];
@@ -2413,19 +2555,30 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
 
       {/* In front of D22 Primary: "D22 unloading and receiving area" */}
       <ZoneTag x={(d22pX0 + d22pX1) / 2} z={8} text="D22 unloading and receiving area" />
-      {/* staging conveyors with scanner arches */}
-      {conveyorXs.map((x, i) => (
-        <StagingConveyor key={`sc-${i}`} x={x} z0={zStagingBack + 0.6} z1={zStagingFront} />
-      ))}
+      {/* dual inbound receiving conveyors carrying materials inward from trucks */}
+      <StagingConveyor x={-52} z0={zStagingBack + 0.6} z1={zStagingFront} mode="receiving" />
+      <StagingConveyor x={-60} z0={zStagingBack + 0.6} z1={zStagingFront} mode="receiving" />
+      {/* receiving operator checking incoming parts */}
+      <group position={[-50.5, 0, 9]} rotation={[0, -Math.PI / 2, 0]}>
+        <WarehouseWorker tone={SKIN[1]} phase={0.2} vest="#0284c7" />
+      </group>
 
       {/* In front of D22 Reserve: "D22 packing area" + "Bay 1", "Bay 2", "Bay 3" */}
-      <ZoneTag x={(d22rX0 + d22rX1) / 2} z={7} text="D22 packing area" />
-      {/* packing tables (grey benches) */}
-      {([-72, -78, -84] as number[]).map((x, i) => (
-        <mesh key={`pt-${i}`} position={[x, 0.9, 7.5]} castShadow>
-          <boxGeometry args={[2.2, 0.08, 0.9]} />
-          <meshStandardMaterial color="#7a8490" metalness={0.3} roughness={0.6} />
-        </mesh>
+      <ZoneTag x={(d22rX0 + d22rX1) / 2} z={6.5} text="D22 packing area" />
+      {/* dual outbound sending conveyors carrying packed cartons to shipping bays */}
+      <StagingConveyor x={-74} z0={zStagingBack + 0.6} z1={zStagingFront} mode="sending" />
+      <StagingConveyor x={-80} z0={zStagingBack + 0.6} z1={zStagingFront} mode="sending" />
+      {/* packing tables (grey benches) with operators packing goods */}
+      {([-71, -77, -84] as number[]).map((x, i) => (
+        <group key={`ptg-${i}`}>
+          <mesh position={[x, 0.9, 7.5]}>
+            <boxGeometry args={[2.0, 0.08, 0.9]} />
+            <meshStandardMaterial color="#7a8490" metalness={0.3} roughness={0.6} />
+          </mesh>
+          <group position={[x, 0, 6.7]}>
+            <WarehouseWorker tone={SKIN[(i + 2) % SKIN.length]} phase={i * 0.4} vest="#d97706" />
+          </group>
+        </group>
       ))}
       <ZoneTag x={-70} z={13} text="Bay 1" />
       <ZoneTag x={-76} z={13} text="Bay 2" />
@@ -2709,7 +2862,9 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
         );
       })}
 
-      <ContactShadows position={[cx, 0.03, cz]} opacity={0.42} scale={Math.max(gw, gd)} blur={2.4} far={6} />
+      {product !== "warehouse" && (
+        <ContactShadows frames={1} position={[cx, 0.03, cz]} opacity={0.35} scale={Math.max(gw, gd)} blur={2.0} far={6} />
+      )}
       <OrbitControls makeDefault enablePan minDistance={8} maxDistance={90}
         maxPolarAngle={Math.PI / 2.1} target={[cx, 0.6, cz]} />
     </>
@@ -2797,7 +2952,7 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
       {!stations.length ? (
         <div className="dim" style={{ padding: 20 }}>waiting for live telemetry…</div>
       ) : (
-        <Canvas shadows flat dpr={[1, 1.5]}
+        <Canvas shadows flat dpr={[1, 1.25]}
           gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
           camera={{ position: cam.position, fov: 44 }} onPointerMissed={() => { }}>
           <CameraRig position={cam.position} cx={cam.cx} cz={cam.cz} ty={(cam as any).ty ?? 0.6} />
