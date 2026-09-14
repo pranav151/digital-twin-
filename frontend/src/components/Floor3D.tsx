@@ -2207,78 +2207,322 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
   );
 }
 
-/** The ENLARGED remaining warehouse — built now, SEPARATE from the previously-built
- *  mezzanine section (which is untouched). The whole hall runs as ONE line of
- *  full-depth 4-level storage zones (R&R, D22, VH, Hyundai, SSP), structural
- *  PILLARS on a grid like the old section, the perimeter ROAD running BEHIND the
- *  racks (yellow barricades both sides), receiving/shipping zones and a canopy of
- *  truck docks in front, plus live workers + 2 working vehicles. Single-floor
- *  ground storage → hidden in the Mezzanine-only view. */
-function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }) {
-  if (whFloor === "mezz") return null;
-  const zBack = -24, zFront = 4;                  // SAME depth as the old mezzanine section → one tight continuous line
-  const zones: [number, number, string][] = [     // x0, x1, label — abutting the old section, no gap
-    [-33, -22, "R & R Storage"],
-    [-46, -35, "D22 Storage"],
-    [-59, -48, "VH Storage"],
-    [-72, -61, "Hyundai Storage"],
-    [-85, -74, "SSP Storage"],
-  ];
-  // ROAD running BEHIND the racks (perimeter road), spanning the whole line incl. the old section
-  const roadZ0 = -32, roadZ1 = -26, roadX0 = -88, roadX1 = 14, roadW = roadX1 - roadX0, roadCx = (roadX0 + roadX1) / 2, roadCz = (roadZ0 + roadZ1) / 2;
+// ============================================================
+// NPCC Warehouse Layout Constants
+// Warehouse: 255m × 120m + 30m canopy
+// Scene scale: ~1 unit = 1 metre
+//
+// X-axis: right (+X near mezzanine) → left (−X away from mezzanine)
+// Z-axis: back (−Z) → front (+Z, truck/dock side)
+//
+// Zone layout (right → left on X):
+//   D22 Reserve  → D22 Primary → RNR → Magazine+Normal Storage
+// PMSP: back-right behind D22 zones
+// Central road: Z = −13 to −7  (tow motors / kurrurs / forklifts)
+//   Yellow barricades on BOTH sides of the road
+// Staging/sorting/packing: Z = −6 to 4 (except RNR front which has racks)
+// Truck docks + canopy: Z = 5 to 35
+// ============================================================
+
+/** Barricade post + horizontal rails on one side of the road (repeated along X). */
+function RoadBarricade({ x0, x1, z, side }: { x0: number; x1: number; z: number; side: "front" | "back" }) {
   const posts: [number, number, number][] = [];
-  for (let x = roadX0 + 1; x <= roadX1 - 1; x += 3.5) { posts.push([x, 0.5, roadZ0]); posts.push([x, 0.5, roadZ1]); }
-  // structural pillars on a grid (blue-grey, floor-to-roof), like the old section
-  const pillars: [number, number, number][] = [];
-  for (let px = -84; px <= -20; px += 12) for (let pz = -22; pz <= 18; pz += 10) pillars.push([px, 4, pz]);
-  const dockXs = [-30, -48, -66, -82];
+  for (let x = x0 + 1; x <= x1 - 1; x += 3.0) posts.push([x, 0.5, z]);
+  const cx = (x0 + x1) / 2, len = x1 - x0;
   return (
     <group>
-      {/* ===== one continuous line of full-depth 4-level storage zones ===== */}
-      {zones.map(([x0, x1, label], i) => (
-        <RackBlock key={i} x0={x0} x1={x1} z0={zBack} z1={zFront} label={label} labelZ={zFront + 2} />
+      <InstancedBoxes items={posts} args={[0.12, 1.0, 0.12]} color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.5} />
+      {[0.3, 0.7].map((y, k) => (
+        <mesh key={k} position={[cx, y, z]}><boxGeometry args={[len, 0.08, 0.08]} /><meshStandardMaterial color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} roughness={0.5} /></mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Staging conveyor — a flat belt with a scanner arch at the exit end. */
+function StagingConveyor({ x, z0, z1 }: { x: number; z0: number; z1: number }) {
+  const len = z1 - z0, cz = (z0 + z1) / 2;
+  return (
+    <group>
+      {/* belt surface */}
+      <mesh position={[x, 0.46, cz]} castShadow>
+        <boxGeometry args={[0.9, 0.08, len]} />
+        <meshStandardMaterial color="#2a2f36" metalness={0.4} roughness={0.55} />
+      </mesh>
+      {/* side rails */}
+      {[-0.48, 0.48].map((dx, i) => (
+        <mesh key={i} position={[x + dx, 0.52, cz]}>
+          <boxGeometry args={[0.06, 0.18, len]} />
+          <meshStandardMaterial color="#3a4050" metalness={0.5} roughness={0.5} />
+        </mesh>
+      ))}
+      {/* legs every 2m */}
+      {Array.from({ length: Math.max(2, Math.round(len / 2)) }).map((_, i) => {
+        const lz = z0 + ((i + 0.5) / Math.max(2, Math.round(len / 2))) * len;
+        return (
+          <mesh key={i} position={[x, 0.24, lz]}>
+            <boxGeometry args={[0.8, 0.48, 0.06]} />
+            <meshStandardMaterial color="#3a4050" metalness={0.4} roughness={0.6} />
+          </mesh>
+        );
+      })}
+      {/* barcode scanner arch at exit end */}
+      <mesh position={[x - 0.7, 0.9, z1 - 0.6]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
+      <mesh position={[x + 0.7, 0.9, z1 - 0.6]}><boxGeometry args={[0.07, 1.4, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
+      <mesh position={[x, 1.64, z1 - 0.6]}><boxGeometry args={[1.5, 0.07, 0.07]} /><meshStandardMaterial color="#222429" /></mesh>
+      {/* scanner laser line */}
+      <mesh position={[x, 1.1, z1 - 0.6]}>
+        <boxGeometry args={[1.0, 0.02, 0.02]} />
+        <meshStandardMaterial color="#ff2a2a" emissive="#ff2a2a" emissiveIntensity={2.0} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** PMSP (back right) — deep shelving behind D22 zones. */
+function PMSPStorage({ x0, x1, z0, z1 }: { x0: number; x1: number; z0: number; z1: number }) {
+  return (
+    <group>
+      <RackBlock x0={x0} x1={x1} z0={z0} z1={z1} levels={4} rowGap={2.0} label="PMSP Storage" labelZ={(z0 + z1) / 2} />
+      {/* perimeter wall at the very back */}
+      <mesh position={[(x0 + x1) / 2, 4.0, z0 - 0.1]} castShadow>
+        <boxGeometry args={[x1 - x0 + 1, 8.0, 0.25]} />
+        <meshStandardMaterial color="#3a4252" metalness={0.2} roughness={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
+/** The NPCC warehouse — accurate zone layout per site drawing.
+ *
+ *  Right → Left:  D22 Reserve | D22 Primary | RNR | Magazine+Normal Storage
+ *  Back:          PMSP Storage (behind D22 Reserve + D22 Primary)
+ *  Middle road:   tow-motor / kurrur / forklift road with yellow barricades both sides
+ *  Staging:       sorting + packing + scanning conveyors (except RNR front = racks)
+ *  Docks:         truck loading/unloading bays under a 30 m canopy
+ *
+ *  All main storage zones are 4 stories (including ground level).
+ *  Row counts are placeholder; exact numbers will be updated when provided.
+ */
+function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }) {
+  if (whFloor === "mezz") return null;
+
+  // ── Zone boundaries ──────────────────────────────────────────────────────
+  // Storage runs at Z: -24 (back wall) to Z: -14 (road back edge)
+  // Road:      Z: -13 to -7
+  // Staging:   Z: -6  to  4  (open floor, conveyors, packing tables)
+  // RNR front racks: replace staging in front of RNR (same Z band but has racks)
+  // Docks:     Z:  5  to 34
+
+  const zStorageBack  = -24;   // back wall of storage halls
+  const zStorageFront = -14;   // front face of storage racks
+  const zRoadBack     = -13;   // road (tow-motor lane) back edge
+  const zRoadFront    = -7;    // road front edge
+  const zStagingFront =  4;    // front of staging / sorting area
+  const zDockFront    =  34;   // front edge of canopy
+
+  // ── Storage zones: [x0, x1, label, hasFrontRacks] ────────────────────────
+  // Right → Left (most positive X first, nearest the existing mezzanine)
+  const D22R  = { x0: -22, x1: -10, label: "D22 Reserve Storage",  frontRacks: false };
+  const D22P  = { x0: -38, x1: -24, label: "D22 Primary Storage",  frontRacks: false };
+  const RNR   = { x0: -54, x1: -40, label: "RNR Storage",          frontRacks: true  };
+  const MAG   = { x0: -68, x1: -56, label: "Magazine (Small Parts)",frontRacks: false };
+  const NORM  = { x0: -84, x1: -70, label: "Normal Storage (Large)",frontRacks: false };
+  const allZones = [D22R, D22P, RNR, MAG, NORM];
+
+  // PMSP: behind D22 Reserve + D22 Primary (back-right)
+  const pmspX0 = D22P.x0, pmspX1 = D22R.x1;
+  const pmspZ0 = zStorageBack - 12, pmspZ1 = zStorageBack;
+
+  // ── Road ─────────────────────────────────────────────────────────────────
+  const roadX0 = NORM.x0 - 2, roadX1 = -8;
+  const roadLen = roadX1 - roadX0, roadCx = (roadX0 + roadX1) / 2;
+  const roadCz  = (zRoadBack + zRoadFront) / 2;
+  const roadW   = zRoadFront - zRoadBack;
+
+  // ── Structural pillars (floor → roof, 8 m) ───────────────────────────────
+  const pillars: [number, number, number][] = [];
+  for (let px = NORM.x0 + 2; px <= D22R.x1 - 2; px += 14)
+    for (let pz = zStorageBack + 2; pz <= zStagingFront; pz += 12)
+      pillars.push([px, 4.0, pz]);
+
+  // ── Dock positions ────────────────────────────────────────────────────────
+  const dockXs = [-18, -32, -48, -62, -78];
+  const canopyX0 = NORM.x0 - 2, canopyX1 = D22R.x1 + 2;
+  const canopyCx = (canopyX0 + canopyX1) / 2;
+  const canopyW  = canopyX1 - canopyX0;
+
+  // ── Staging conveyors (packing + scan) — in staging zone except RNR front ─
+  const conveyorXs = [-15, -29, -66, -74]; // one per zone except RNR (has racks)
+
+  return (
+    <group>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          STORAGE HALLS — 4-story pallet racking
+          ═══════════════════════════════════════════════════════════════════ */}
+      {allZones.map((z, i) => (
+        <RackBlock
+          key={`zone-${i}`}
+          x0={z.x0} x1={z.x1}
+          z0={zStorageBack} z1={zStorageFront}
+          levels={4}
+          rowGap={2.2}
+          label={z.label}
+          labelZ={zStorageBack + 1}
+        />
       ))}
 
-      {/* ===== structural pillars on a grid (floor → roof) ===== */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          RNR FRONT RACKS — racks in the staging zone in front of RNR
+          ═══════════════════════════════════════════════════════════════════ */}
+      <RackBlock
+        x0={RNR.x0} x1={RNR.x1}
+        z0={zRoadFront + 0.5} z1={zStagingFront}
+        levels={4}
+        rowGap={2.2}
+        label="RNR Front Racks"
+        labelZ={zStagingFront - 1}
+      />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          PMSP STORAGE — back-right behind D22 zones
+          ═══════════════════════════════════════════════════════════════════ */}
+      <PMSPStorage x0={pmspX0} x1={pmspX1} z0={pmspZ0} z1={pmspZ1} />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          STRUCTURAL PILLARS
+          ═══════════════════════════════════════════════════════════════════ */}
       <InstancedBoxes items={pillars} args={[0.5, 8, 0.5]} color="#3f5170" metalness={0.4} roughness={0.6} cast />
-      <InstancedBoxes items={pillars.map((p) => [p[0], 8.1, p[2]] as [number, number, number])} args={[0.9, 0.2, 0.9]} color="#2b3a52" metalness={0.4} roughness={0.6} />
+      <InstancedBoxes
+        items={pillars.map((p) => [p[0], 8.1, p[2]] as [number, number, number])}
+        args={[0.9, 0.2, 0.9]} color="#2b3a52" metalness={0.4} roughness={0.6}
+      />
 
-      {/* ===== perimeter ROAD running BEHIND the racks + yellow barricades ===== */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[roadCx, 0.02, roadCz]} receiveShadow><planeGeometry args={[roadW, roadZ1 - roadZ0]} /><meshStandardMaterial color="#39404a" roughness={0.92} /></mesh>
-      {Array.from({ length: Math.floor(roadW / 6) }).map((_, i) => (<mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[roadX0 + 3 + i * 6, 0.03, roadCz]}><planeGeometry args={[2, 0.18]} /><meshBasicMaterial color="#caa63a" /></mesh>))}
-      <InstancedBoxes items={posts} args={[0.12, 1.0, 0.12]} color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} />
-      {[roadZ0, roadZ1].map((z, e) => [0.42, 0.82].map((y, k) => (<mesh key={`${e}-${k}`} position={[roadCx, y, z]}><boxGeometry args={[roadW, 0.09, 0.09]} /><meshStandardMaterial color="#e8b21c" emissive="#3a2c00" emissiveIntensity={0.4} roughness={0.5} /></mesh>)))}
-      <ZoneTag x={roadCx} z={roadCz - 2.4} text="Road" />
+      {/* ═══════════════════════════════════════════════════════════════════
+          CENTRAL ROAD — tow-motor / kurrur / forklift lane
+          Yellow barricades on BOTH sides (front and back of road)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {/* road surface */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[roadCx, 0.02, roadCz]} receiveShadow>
+        <planeGeometry args={[roadLen, roadW]} />
+        <meshStandardMaterial color="#31373f" roughness={0.88} />
+      </mesh>
+      {/* centre dashed line */}
+      {Array.from({ length: Math.floor(roadLen / 4) }).map((_, i) => (
+        <mesh key={`dash-${i}`} rotation={[-Math.PI / 2, 0, 0]}
+          position={[roadX0 + 2 + i * 4, 0.03, roadCz]}>
+          <planeGeometry args={[2, 0.15]} />
+          <meshBasicMaterial color="#caa63a" />
+        </mesh>
+      ))}
+      {/* barricades — BACK side of road (storage side) */}
+      <RoadBarricade x0={roadX0} x1={roadX1} z={zRoadBack} side="back" />
+      {/* barricades — FRONT side of road (staging side) */}
+      <RoadBarricade x0={roadX0} x1={roadX1} z={zRoadFront} side="front" />
+      <ZoneTag x={roadCx} z={roadCz} text="Tow Motor Road" />
 
-      {/* ===== receiving / shipping / operation zones along the dock edge (front) ===== */}
-      <ZoneTag x={-30} z={11} text="Depot Shipping" />
-      <ZoneTag x={-52} z={11} text="D22 Unloading & Receiving" />
-      <ZoneTag x={-74} z={11} text="Local Receiving" />
-      {[-34, -52, -70].map((x, i) => (<group key={i} position={[x, 0, 10]}><DollyCage /></group>))}
+      {/* ═══════════════════════════════════════════════════════════════════
+          STAGING + SORTING + PACKING AREA (Z: -6 to 4)
+          Conveyors + packing tables + scanner arches
+          ═══════════════════════════════════════════════════════════════════ */}
+      {/* staging floor stripe */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}
+        position={[(D22R.x1 + NORM.x0) / 2, 0.015, (zRoadFront + zStagingFront) / 2]} receiveShadow>
+        <planeGeometry args={[D22R.x1 - NORM.x0, zStagingFront - zRoadFront]} />
+        <meshStandardMaterial color="#3a4a42" roughness={0.9} metalness={0.05} />
+      </mesh>
+      <ZoneTag x={(D22R.x1 + D22P.x0) / 2} z={(zRoadFront + zStagingFront) / 2} text="Staging & Sorting" />
+      <ZoneTag x={(MAG.x1 + NORM.x0) / 2}  z={(zRoadFront + zStagingFront) / 2} text="Packing Area" />
 
-      {/* ===== canopy + truck docks over the frontage ===== */}
-      <mesh position={[-51, 5.4, 24]} castShadow><boxGeometry args={[70, 0.3, 10]} /><meshStandardMaterial color="#8a9098" metalness={0.3} roughness={0.7} /></mesh>
+      {/* packing tables (grey benches) */}
+      {([-20, -30, -60, -72] as number[]).map((x, i) => (
+        <mesh key={`pt-${i}`} position={[x, 0.9, -2]} castShadow>
+          <boxGeometry args={[2.4, 0.08, 0.9]} />
+          <meshStandardMaterial color="#7a8490" metalness={0.3} roughness={0.6} />
+        </mesh>
+      ))}
+
+      {/* staging conveyors with scanner arches */}
+      {conveyorXs.map((x, i) => (
+        <StagingConveyor key={`sc-${i}`} x={x} z0={zRoadFront + 0.6} z1={zStagingFront + 1} />
+      ))}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          TRUCK DOCKS + CANOPY  (Z: 5 – 34)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {/* canopy roof (30 m deep) */}
+      <mesh position={[canopyCx, 5.4, (zStagingFront + zDockFront) / 2]} castShadow>
+        <boxGeometry args={[canopyW, 0.3, zDockFront - zStagingFront]} />
+        <meshStandardMaterial color="#8a9098" metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* canopy support columns */}
       {dockXs.map((x, i) => (
-        <group key={i} position={[x, 0, 22]}>
-          {[-1.9, 1.9].map((dx, j) => (<mesh key={j} position={[dx, 1.6, 0]}><boxGeometry args={[0.2, 3.2, 0.2]} /><meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} /></mesh>))}
-          <mesh position={[0, 3.3, 0]}><boxGeometry args={[4.2, 0.25, 0.25]} /><meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} /></mesh>
-          <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a"][i % 4]} />
+        <mesh key={`cs-${i}`} position={[x, 2.8, zStagingFront + 1]} castShadow>
+          <boxGeometry args={[0.3, 5.6, 0.3]} />
+          <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
+        </mesh>
+      ))}
+
+      {/* truck bays */}
+      {dockXs.map((x, i) => (
+        <group key={`dock-${i}`} position={[x, 0, zStagingFront + 17]}>
+          {/* dock door frame */}
+          {[-1.9, 1.9].map((dx, j) => (
+            <mesh key={j} position={[dx, 1.6, 0]}>
+              <boxGeometry args={[0.2, 3.2, 0.2]} />
+              <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
+            </mesh>
+          ))}
+          <mesh position={[0, 3.3, 0]}>
+            <boxGeometry args={[4.2, 0.25, 0.25]} />
+            <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
+          </mesh>
+          <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a", "#6a3b5a"][i % 5]} />
           <YellowBay x={0} z={-5} />
         </group>
       ))}
 
-      {/* ===== live workers walk CLEAN LANES in front of the racks + shipping (never into the racks) ===== */}
-      <AisleWalker a={[-82, 6]} b={[-24, 6]} phase={0} tone={SKIN[0]} />
-      <AisleWalker a={[-24, 8.5]} b={[-82, 8.5]} phase={0.45} tone={SKIN[1]} />
-      <AisleWalker a={[-48, 6]} b={[-48, 13]} phase={0.7} tone={SKIN[2]} />
-      {/* a couple of workers at the receiving zones */}
-      {([[-30, 14], [-74, 14]] as [number, number][]).map(([x, z], i) => (
-        <group key={`rw${i}`} position={[x + 1.4, 0, z]} rotation={[0, -Math.PI / 2, 0]}><WarehouseWorker tone={SKIN[(i + 1) % SKIN.length]} phase={i * 0.7} vest="#e8a12a" /></group>
-      ))}
+      {/* dock zone labels */}
+      <ZoneTag x={-15} z={zStagingFront + 5} text="Loading / Unloading Docks" />
 
-      {/* ===== 2 working vehicles: a green Toyota tugger milk-run + a forklift ===== */}
-      <Tugger loop={[[-26, 7], [-84, 7], [-84, -1], [-26, -1]]} color="#7f9769" />
-      <WorkingForklift x={-40} z0={2} z1={-22} phase={0.2} />
+      {/* ═══════════════════════════════════════════════════════════════════
+          ZONE LABELS (front-face of storage)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <ZoneTag x={(D22R.x0 + D22R.x1) / 2}  z={zStorageFront + 1} text="D22 Reserve" />
+      <ZoneTag x={(D22P.x0 + D22P.x1) / 2}  z={zStorageFront + 1} text="D22 Primary" />
+      <ZoneTag x={(RNR.x0  + RNR.x1)  / 2}  z={zStorageFront + 1} text="RNR Storage" />
+      <ZoneTag x={(MAG.x0  + MAG.x1)  / 2}  z={zStorageFront + 1} text="Magazine" />
+      <ZoneTag x={(NORM.x0 + NORM.x1) / 2}  z={zStorageFront + 1} text="Normal Storage" />
+      <ZoneTag x={(pmspX0  + pmspX1)  / 2}  z={(pmspZ0 + pmspZ1) / 2} text="PMSP" />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          LIVE WORKERS + VEHICLES
+          ═══════════════════════════════════════════════════════════════════ */}
+      {/* workers in staging lane */}
+      <AisleWalker a={[D22R.x1 - 2, -1]} b={[NORM.x0 + 2, -1]} phase={0}    tone={SKIN[0]} />
+      <AisleWalker a={[NORM.x0 + 2,  2]} b={[D22R.x1 - 2,  2]} phase={0.4}  tone={SKIN[1]} />
+      {/* workers at packing tables */}
+      {([-20, -30, -60, -72] as number[]).map((x, i) => (
+        <group key={`pw-${i}`} position={[x, 0, -1.6]} rotation={[0, Math.PI / 2, 0]}>
+          <WarehouseWorker tone={SKIN[(i + 2) % SKIN.length]} phase={i * 0.55} vest="#2f9e8f" />
+        </group>
+      ))}
+      {/* workers at dock area */}
+      {([[-18, zStagingFront + 8], [-48, zStagingFront + 8]] as [number, number][]).map(([x, z], i) => (
+        <group key={`dw-${i}`} position={[x, 0, z]} rotation={[0, -Math.PI / 2, 0]}>
+          <WarehouseWorker tone={SKIN[(i + 1) % SKIN.length]} phase={i * 0.7} vest="#e8a12a" />
+        </group>
+      ))}
+      {/* tow motor (tugger) on the central road */}
+      <Tugger
+        loop={[[roadX0 + 4, roadCz], [roadX1 - 4, roadCz], [roadX1 - 4, roadCz - 1], [roadX0 + 4, roadCz - 1]]}
+        color="#f5c518"
+      />
+      {/* forklift working in RNR front-rack aisle */}
+      <WorkingForklift x={(RNR.x0 + RNR.x1) / 2} z0={zRoadFront + 1} z1={zStagingFront - 1} phase={0.3} />
+      {/* second forklift in D22 aisle */}
+      <WorkingForklift x={(D22P.x0 + D22P.x1) / 2} z0={zStorageBack + 2} z1={zStorageFront - 1} phase={0.7} />
     </group>
   );
 }
@@ -2346,7 +2590,7 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
   // the warehouse floor is far bigger than its station markers — size the ground,
   // roof trusses, high-bay lights and perimeter columns to the whole building so
   // the new storage hall gets a real floor + ceiling instead of floating on the bg.
-  if (product === "warehouse") { minX = -90; maxX = 16; minZ = -34; maxZ = 26; }
+  if (product === "warehouse") { minX = -92; maxX = 16; minZ = -38; maxZ = 36; }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const gw = (maxX - minX) + 12, gd = (maxZ - minZ) + 12;
   // central-corridor rectangle for the AGV loop (between the two bays)
@@ -2559,16 +2803,16 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
     const isWh = product === "warehouse";
     const footprint = Math.max(maxX - minX, maxZ - minZ, 14);
     if (isWh) {
-      // The warehouse now spans the previously-built mezzanine section (x≈-20..15)
-      // PLUS the new storage extension (x≈-76..-20). Frame the whole building from
-      // that combined footprint — an elevated 3/4 overview looking toward the docks.
-      const minX = -90, maxX = 16, minZ = -34, maxZ = 26;
+      // The NPCC warehouse spans:
+      //   X: -90 (Normal Storage left wall) to +16 (mezzanine right edge)
+      //   Z: -37 (PMSP back wall) to +35 (dock/canopy front)
+      // Frame from a high 3/4 view looking from the dock side back across storage.
+      const minX = -92, maxX = 16, minZ = -38, maxZ = 36;
       const wcx = (minX + maxX) / 2;
       const fp = Math.max(maxX - minX, maxZ - minZ, 20);
-      const czT = -6;                       // orbit target: mid-building
-      const d = fp * 0.44 + 12;
-      // look from the DOCK side back across the whole (now compact) depth.
-      return { position: [wcx + d * 0.34, d * 0.55, czT + d * 0.62] as [number, number, number], cx: wcx, cz: czT, ty: 1.8 };
+      const czT = (minZ + maxZ) / 2;
+      const d = fp * 0.42 + 14;
+      return { position: [wcx + d * 0.28, d * 0.52, czT + d * 0.68] as [number, number, number], cx: wcx, cz: czT, ty: 1.8 };
     }
     const dist = footprint * 0.8 + 8;
     // 3/4 corner overview — close enough that the hero workpieces (car bodies) read
