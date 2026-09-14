@@ -2209,7 +2209,7 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
 
 // ============================================================
 // NPCC Warehouse Layout Constants
-// Warehouse: 255m × 120m + 30m canopy
+// Warehouse: 255m × 120m (no canopy in 3D view)
 // Scene scale: ~1 unit = 1 metre
 //
 // X-axis: right (+X near mezzanine) → left (−X away from mezzanine)
@@ -2221,7 +2221,7 @@ function WorkingForklift({ x, z0, z1, phase = 0 }: { x: number; z0: number; z1: 
 // Central road: Z = −13 to −7  (tow motors / kurrurs / forklifts)
 //   Yellow barricades on BOTH sides of the road
 // Staging/sorting/packing: Z = −6 to 4 (except RNR front which has racks)
-// Truck docks + canopy: Z = 5 to 35
+// Truck docks: Z = 5 to 22 (open, no canopy)
 // ============================================================
 
 /** Barricade post + horizontal rails on one side of the road (repeated along X). */
@@ -2299,7 +2299,7 @@ function PMSPStorage({ x0, x1, z0, z1 }: { x0: number; x1: number; z0: number; z
  *  Back:          PMSP Storage (behind D22 Reserve + D22 Primary)
  *  Middle road:   tow-motor / kurrur / forklift road with yellow barricades both sides
  *  Staging:       sorting + packing + scanning conveyors (except RNR front = racks)
- *  Docks:         truck loading/unloading bays under a 30 m canopy
+ *  Docks:         open truck loading/unloading bays (no canopy)
  *
  *  All main storage zones are 4 stories (including ground level).
  *  Row counts are placeholder; exact numbers will be updated when provided.
@@ -2319,7 +2319,7 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
   const zRoadBack     = -13;   // road (tow-motor lane) back edge
   const zRoadFront    = -7;    // road front edge
   const zStagingFront =  4;    // front of staging / sorting area
-  const zDockFront    =  34;   // front edge of canopy
+  const zDockFront    =  22;   // front edge of truck bays
 
   // ── Storage zones: [x0, x1, label, hasFrontRacks] ────────────────────────
   // Right → Left (most positive X first, nearest the existing mezzanine)
@@ -2348,9 +2348,6 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
 
   // ── Dock positions ────────────────────────────────────────────────────────
   const dockXs = [-18, -32, -48, -62, -78];
-  const canopyX0 = NORM.x0 - 2, canopyX1 = D22R.x1 + 2;
-  const canopyCx = (canopyX0 + canopyX1) / 2;
-  const canopyW  = canopyX1 - canopyX0;
 
   // ── Staging conveyors (packing + scan) — in staging zone except RNR front ─
   const conveyorXs = [-15, -29, -66, -74]; // one per zone except RNR (has racks)
@@ -2449,42 +2446,20 @@ function WarehouseExtension({ whFloor }: { whFloor: "both" | "ground" | "mezz" }
       ))}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TRUCK DOCKS + CANOPY  (Z: 5 – 34)
+          TRUCK DOCKS — open bays (no canopy), same style as old plan
           ═══════════════════════════════════════════════════════════════════ */}
-      {/* canopy roof (30 m deep) */}
-      <mesh position={[canopyCx, 5.4, (zStagingFront + zDockFront) / 2]} castShadow>
-        <boxGeometry args={[canopyW, 0.3, zDockFront - zStagingFront]} />
-        <meshStandardMaterial color="#8a9098" metalness={0.3} roughness={0.7} />
-      </mesh>
-      {/* canopy support columns */}
       {dockXs.map((x, i) => (
-        <mesh key={`cs-${i}`} position={[x, 2.8, zStagingFront + 1]} castShadow>
-          <boxGeometry args={[0.3, 5.6, 0.3]} />
-          <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
-        </mesh>
-      ))}
-
-      {/* truck bays */}
-      {dockXs.map((x, i) => (
-        <group key={`dock-${i}`} position={[x, 0, zStagingFront + 17]}>
-          {/* dock door frame */}
-          {[-1.9, 1.9].map((dx, j) => (
-            <mesh key={j} position={[dx, 1.6, 0]}>
-              <boxGeometry args={[0.2, 3.2, 0.2]} />
-              <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
-            </mesh>
-          ))}
-          <mesh position={[0, 3.3, 0]}>
-            <boxGeometry args={[4.2, 0.25, 0.25]} />
-            <meshStandardMaterial color="#4a5568" metalness={0.4} roughness={0.5} />
-          </mesh>
+        <group key={`dock-${i}`} position={[x, 0, zStagingFront + 8]}>
           <DepotTruck color={["#8a3b3b", "#3b5a8a", "#3b7a5a", "#6a5a8a", "#6a3b5a"][i % 5]} />
           <YellowBay x={0} z={-5} />
         </group>
       ))}
-
-      {/* dock zone labels */}
-      <ZoneTag x={-15} z={zStagingFront + 5} text="Loading / Unloading Docks" />
+      {/* zone labels for receiving/shipping — same as old plan */}
+      <ZoneTag x={-18} z={zStagingFront + 11} text="Depot Shipping" />
+      <ZoneTag x={-48} z={zStagingFront + 11} text="D22 Unloading & Receiving" />
+      <ZoneTag x={-78} z={zStagingFront + 11} text="Local Receiving" />
+      {/* dollies staged at receiving zones like old plan */}
+      {([-32, -48, -66] as number[]).map((x, i) => (<group key={`dc-${i}`} position={[x, 0, zStagingFront + 6]}><DollyCage /></group>))}
 
       {/* ═══════════════════════════════════════════════════════════════════
           ZONE LABELS (front-face of storage)
@@ -2590,7 +2565,7 @@ function Scene({ stations, selected, onSelect, bottleneck, kpi, layout, flowRate
   // the warehouse floor is far bigger than its station markers — size the ground,
   // roof trusses, high-bay lights and perimeter columns to the whole building so
   // the new storage hall gets a real floor + ceiling instead of floating on the bg.
-  if (product === "warehouse") { minX = -92; maxX = 16; minZ = -38; maxZ = 36; }
+  if (product === "warehouse") { minX = -92; maxX = 16; minZ = -38; maxZ = 24; }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const gw = (maxX - minX) + 12, gd = (maxZ - minZ) + 12;
   // central-corridor rectangle for the AGV loop (between the two bays)
@@ -2805,9 +2780,9 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
     if (isWh) {
       // The NPCC warehouse spans:
       //   X: -90 (Normal Storage left wall) to +16 (mezzanine right edge)
-      //   Z: -37 (PMSP back wall) to +35 (dock/canopy front)
+      //   Z: -37 (PMSP back wall) to +24 (open dock front)
       // Frame from a high 3/4 view looking from the dock side back across storage.
-      const minX = -92, maxX = 16, minZ = -38, maxZ = 36;
+      const minX = -92, maxX = 16, minZ = -38, maxZ = 24;
       const wcx = (minX + maxX) / 2;
       const fp = Math.max(maxX - minX, maxZ - minZ, 20);
       const czT = (minZ + maxZ) / 2;
