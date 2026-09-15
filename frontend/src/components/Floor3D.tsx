@@ -6,6 +6,7 @@ import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import type { StationLive, StationKpi, Layout } from "../types";
 import { STATE_COLOR, STATE_ICON, STATE_LABEL, type MachineState } from "../types";
+import { WarehouseDepot } from "./warehouse/WarehouseDepot";
 import { MachineModel, Arm } from "./MachineModels";
 import { MachineGLTF, ModelErrorBoundary } from "./MachineGLTF";
 
@@ -2894,7 +2895,7 @@ function CameraRig({ position, cx, cz, ty = 0.6 }: { position: [number, number, 
   return null;
 }
 
-export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, layout, flowRate = 0, product, engineSupply }: {
+function LegacyFloor3D({ stations, selected, onSelect, bottleneck, kpi = {}, layout, flowRate = 0, product, engineSupply }: {
   stations: StationLive[]; selected: string | null; onSelect: (s: string) => void;
   bottleneck?: string | null; kpi?: Record<string, StationKpi>; layout: Layout; flowRate?: number;
   product?: string | null;
@@ -2969,4 +2970,8 @@ export function Floor3D({ stations, selected, onSelect, bottleneck, kpi = {}, la
       )}
     </div>
   );
+}
+
+export function Floor3D(props: Parameters<typeof LegacyFloor3D>[0]) {
+  return props.product === "warehouse" ? <WarehouseDepot stations={props.stations} selected={props.selected} onSelect={props.onSelect} /> : <LegacyFloor3D {...props} />;
 }

@@ -4,6 +4,7 @@ import { STATE_COLOR, type MachineState } from "../types";
 
 const EMPTY_LAYOUT: Layout = { line_id: "L1", line_name: null, product: null, stations: [], flow: [], zones: [] };
 import { getTimeline, getAssets, getOee, getLosses, getThroughput } from "../api";
+import { WarehouseDepot } from "../components/warehouse/WarehouseDepot";
 import { FloorMap } from "../components/FloorMap";
 import { Floor3D } from "../components/Floor3D";
 import { StatesGantt } from "../components/StatesGantt";
@@ -45,7 +46,12 @@ export function Overview({
   const lineIdSet = new Set(lineStations.map((s) => s.station_id));
 
   // fetch the SELECTED line's layout (positions / flow / zones / product) for the floor
-  useEffect(() => { getAssets(line).then(setLayout); }, [line]);
+  useEffect(() => {
+    let active = true;
+    setLayout({ ...EMPTY_LAYOUT, line_id: line, product: line === "TOYOTA_WH" ? "warehouse" : null });
+    getAssets(line).then((next) => { if (active) setLayout(next); });
+    return () => { active = false; };
+  }, [line]);
   const visibleIds = layout.stations.map((s) => s.id);
 
   // a specific line's own throughput; "ALL" uses the plant-wide sum from the WS
@@ -126,7 +132,7 @@ export function Overview({
   const assetMap: Record<string, Asset> = Object.fromEntries(assets.map((a) => [a.id, a]));
 
   const isWh = layout.product === "warehouse";
-  if (!snap) return <div className="card"><div className="dim">connecting to live feed…</div></div>;
+  if (!snap && !isWh) return <div className="card"><div className="dim">connecting to live feed…</div></div>;
 
   return (
     <div className="grid" style={{ gap: 14 }}>
@@ -171,6 +177,7 @@ export function Overview({
         </div>
         {view === "3d"
           ? <Floor3D stations={lineStations} selected={selected} onSelect={onSelect} bottleneck={bottleneck} kpi={kpi} layout={layout} flowRate={thru?.units_per_hr || 0} product={layout.product} engineSupply={engSupply} />
+          : isWh ? <WarehouseDepot stations={lineStations} selected={selected} onSelect={onSelect} initialView="plan" />
           : <FloorMap stations={lineStations} selected={selected} onSelect={onSelect} bottleneck={bottleneck} kpi={kpi} />}
         <div className="legend" style={{ marginTop: 8 }}>
           <span className="dim" style={{ fontWeight: 600 }}>utilisation heat:</span>
@@ -261,15 +268,15 @@ export function Overview({
       {/* per-part traceability (spec §6.C) */}
       <div className="card">
         <div className="h"><h3>Finished parts · traceability</h3>
-          <span className="sub">{(snap.parts || []).length ? `last ${(snap.parts || []).length} · WIP ${wip} on line` : "waiting for completions…"}</span></div>
-        {!(snap.parts || []).length ? (
+          <span className="sub">{(snap?.parts || []).length ? `last ${(snap?.parts || []).length} · WIP ${wip} on line` : "waiting for completions…"}</span></div>
+        {!(snap?.parts || []).length ? (
           <div className="dim">no parts have exited the line yet</div>
         ) : (
           <div className="scroll" style={{ boxShadow: "none", border: "none" }}>
             <table className="tbl">
               <thead><tr><th>Part ID</th><th>Lead time (on line)</th><th style={{ textAlign: "right" }}>Exited</th></tr></thead>
               <tbody>
-                {(snap.parts || []).slice(0, 8).map((p) => (
+                {(snap?.parts || []).slice(0, 8).map((p) => (
                   <tr key={p.part_id}>
                     <td style={{ fontWeight: 700 }}>{p.part_id}</td>
                     <td className="muted">{p.lead_time_s != null ? `${Math.round(p.lead_time_s)} s` : "—"}</td>
